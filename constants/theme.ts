@@ -1,30 +1,25 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * App colors: Yellow, Blue, White theme
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// Color palette: Yellow, Blue, White
+const primaryBlue = '#007AFF'; // Bright blue
+const primaryYellow = '#FFD700'; // Gold yellow
+const white = '#FFFFFF';
+const textColor = '#000000';
 
 export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-  },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
-  },
+  text: textColor,
+  background: white,
+  tint: primaryBlue,
+  icon: primaryBlue,
+  tabIconDefault: '#999999',
+  tabIconSelected: primaryBlue,
+  primary: primaryBlue,
+  secondary: primaryYellow,
+  white: white,
 };
 
 export const Fonts = Platform.select({
