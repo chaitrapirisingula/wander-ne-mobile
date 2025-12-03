@@ -307,15 +307,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E8E8E8",
     overflow: "hidden",
+    height: 120,
+    minHeight: 120,
+    maxHeight: 120,
   },
   imageWrapper: {
     width: 120,
-    height: 100,
+    height: 120,
     backgroundColor: "#EFEFEF",
+    overflow: "hidden",
   },
   image: {
-    width: "100%",
-    height: "100%",
+    width: 120,
+    height: 120,
   },
   imagePlaceholder: {
     flex: 1,
@@ -330,6 +334,8 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 14,
     justifyContent: "center",
+    minHeight: 120,
+    maxHeight: 120,
   },
   name: {
     fontSize: 18,
