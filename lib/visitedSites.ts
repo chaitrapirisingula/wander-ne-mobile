@@ -1,4 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ref, set, get, remove } from "firebase/database";
+import { db } from "../firebase";
 
 export interface VisitedSite {
   id: string;
@@ -9,39 +10,50 @@ export interface VisitedSite {
   visitedAt: string;
 }
 
-const STORAGE_KEY = "visitedSites";
-
-export async function getVisitedSites(): Promise<VisitedSite[]> {
+export async function getVisitedSites(userId: string): Promise<VisitedSite[]> {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as VisitedSite[];
+    const visitedRef = ref(db, `userVisitedSites/${userId}`);
+    const snapshot = await get(visitedRef);
+    if (!snapshot.exists()) return [];
+    
+    const data = snapshot.val();
+    return Object.values(data) as VisitedSite[];
   } catch (error) {
     console.error("Failed to load visited sites:", error);
     return [];
   }
 }
 
-export async function addVisitedSite(site: Omit<VisitedSite, "visitedAt">) {
+export async function addVisitedSite(userId: string, site: Omit<VisitedSite, "visitedAt">) {
   try {
-    const existing = await getVisitedSites();
-    const updatedAt = new Date().toISOString();
-
-    const filtered = existing.filter((entry) => entry.id !== site.id);
-    const next: VisitedSite = { ...site, visitedAt: updatedAt };
-
-    const newList = [next, ...filtered];
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
+    const visitedAt = new Date().toISOString();
+    const visitedSite: VisitedSite = { ...site, visitedAt };
+    
+    const visitedRef = ref(db, `userVisitedSites/${userId}/${site.id}`);
+    await set(visitedRef, visitedSite);
   } catch (error) {
     console.error("Failed to save visited site:", error);
+    throw error;
   }
 }
 
-export async function clearVisitedSites() {
+export async function clearVisitedSites(userId: string) {
   try {
-    await AsyncStorage.removeItem(STORAGE_KEY);
+    const visitedRef = ref(db, `userVisitedSites/${userId}`);
+    await remove(visitedRef);
   } catch (error) {
     console.error("Failed to clear visited sites:", error);
+    throw error;
   }
 }
 
+export async function isSiteVisited(userId: string, siteId: string): Promise<boolean> {
+  try {
+    const visitedRef = ref(db, `userVisitedSites/${userId}/${siteId}`);
+    const snapshot = await get(visitedRef);
+    return snapshot.exists();
+  } catch (error) {
+    console.error("Failed to check if site is visited:", error);
+    return false;
+  }
+}

@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { onValue, ref } from "firebase/database";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   ScrollView,
   StyleSheet,
@@ -56,6 +57,7 @@ export default function SitesScreen() {
   const [sites, setSites] = useState<Site[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFeatures, setSelectedFeatures] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   // Get all unique features from all sites
@@ -84,6 +86,7 @@ export default function SitesScreen() {
       } else {
         setSites([]);
       }
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -251,23 +254,30 @@ export default function SitesScreen() {
           )}
         </View>
       )}
-      <FlatList
-        data={filteredSites}
-        keyExtractor={(item) => item.id}
-        renderItem={renderSiteCard}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No sites found</Text>
-            <Text style={styles.emptySubtitle}>
-              {selectedFeatures.size > 0
-                ? "Try adjusting your filters or search to find sites."
-                : "Try adjusting your search to find a site by name, city, or state."}
-            </Text>
-          </View>
-        }
-      />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.tint} />
+          <Text style={styles.loadingText}>Loading sites...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredSites}
+          keyExtractor={(item) => item.id}
+          renderItem={renderSiteCard}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>No sites found</Text>
+              <Text style={styles.emptySubtitle}>
+                {selectedFeatures.size > 0
+                  ? "Try adjusting your filters or search to find sites."
+                  : "Try adjusting your search to find a site by name, city, or state."}
+              </Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }
@@ -366,6 +376,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     textAlign: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 100,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: Colors.text,
   },
   filterSection: {
     marginBottom: 16,

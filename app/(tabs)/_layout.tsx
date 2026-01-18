@@ -8,7 +8,7 @@ import { Colors } from "@/constants/theme";
 export default function TabLayout() {
   return (
     <Tabs
-      initialRouteName="map"
+      initialRouteName="sites"
       screenOptions={{
         tabBarActiveTintColor: Colors.tint,
         tabBarInactiveTintColor: Colors.tabIconDefault,

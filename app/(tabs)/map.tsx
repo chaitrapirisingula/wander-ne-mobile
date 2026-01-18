@@ -94,7 +94,7 @@ export default function MapScreen() {
 
     // Fetch sites from Firebase
     const sitesRef = ref(db, "2025_sites");
-    const unsubscribe = onValue(sitesRef, async (snapshot) => {
+    const unsubscribe = onValue(sitesRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const sitesArray = Object.entries(data as any).map(
@@ -105,12 +105,12 @@ export default function MapScreen() {
         ) as Site[];
         setSites(sitesArray);
 
-        // Geocode addresses for sites without coordinates
-        setGeocoding(true);
+        // First, process sites that already have coordinates
         const sitesWithCoordinates: Array<Site & { lat: number; lng: number }> =
           [];
+        const sitesNeedingGeocoding: Site[] = [];
 
-        for (const site of sitesArray) {
+        sitesArray.forEach((site) => {
           let lat: number | undefined = site.latitude;
           let lng: number | undefined = site.longitude;
 
@@ -124,22 +124,7 @@ export default function MapScreen() {
             }
           }
 
-          // If no valid coordinates, geocode the address
-          if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-            if (site.address) {
-              const coords = await geocodeAddress(
-                site.address,
-                site.city,
-                site.state
-              );
-              if (coords && !isNaN(coords.lat) && !isNaN(coords.lng)) {
-                lat = coords.lat;
-                lng = coords.lng;
-              }
-            }
-          }
-
-          // Only add if we have valid coordinates
+          // If we have valid coordinates, add immediately
           if (
             lat !== undefined &&
             lng !== undefined &&
@@ -151,12 +136,45 @@ export default function MapScreen() {
               lat: Number(lat),
               lng: Number(lng),
             });
+          } else if (site.address) {
+            // Queue for geocoding
+            sitesNeedingGeocoding.push(site);
           }
-        }
+        });
 
+        // Set sites with coordinates immediately (don't wait for geocoding)
         setSitesWithCoords(sitesWithCoordinates);
-        setGeocoding(false);
-        setLoading(false);
+        setLoading(false); // Show map immediately with sites that have coordinates
+
+        // Geocode addresses in the background (non-blocking)
+        if (sitesNeedingGeocoding.length > 0) {
+          setGeocoding(true);
+          (async () => {
+            const geocodedSites: Array<Site & { lat: number; lng: number }> =
+              [];
+
+            for (const site of sitesNeedingGeocoding) {
+              const coords = await geocodeAddress(
+                site.address!,
+                site.city,
+                site.state
+              );
+              if (coords && !isNaN(coords.lat) && !isNaN(coords.lng)) {
+                geocodedSites.push({
+                  ...site,
+                  lat: coords.lat,
+                  lng: coords.lng,
+                });
+              }
+            }
+
+            // Update with newly geocoded sites
+            if (geocodedSites.length > 0) {
+              setSitesWithCoords((prev) => [...prev, ...geocodedSites]);
+            }
+            setGeocoding(false);
+          })();
+        }
       } else {
         setSites([]);
         setSitesWithCoords([]);
@@ -168,7 +186,9 @@ export default function MapScreen() {
   }, []);
 
   const handleMarkerClick = (siteId: string) => {
-    router.push(`/site/${siteId}`);
+    if (siteId) {
+      router.push(`/site/${siteId}`);
+    }
   };
 
   // Generate HTML for Mapbox map
