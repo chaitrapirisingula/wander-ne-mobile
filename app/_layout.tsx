@@ -24,15 +24,18 @@ export const unstable_settings = {
 export default function RootLayout() {
   return (
     <ThemeProvider value={AppTheme}>
-      <Stack>
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: "#FFFFFF" },
+          headerTintColor: "#000000",
+        }}
+      >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="modal"
           options={{
             presentation: "modal",
             title: "Modal",
-            headerStyle: { backgroundColor: "#FFFFFF" },
-            headerTintColor: "#000000",
           }}
         />
         <Stack.Screen
@@ -40,8 +43,7 @@ export default function RootLayout() {
           options={{
             title: "Site Details",
             headerBackTitle: "Back",
-            headerStyle: { backgroundColor: "#FFFFFF" },
-            headerTintColor: "#000000",
+            headerBackVisible: true,
             presentation: "card",
           }}
         />

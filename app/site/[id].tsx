@@ -1,7 +1,7 @@
 import { User, onAuthStateChanged } from "firebase/auth";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import { onValue, ref } from "firebase/database";
 import React, { useEffect, useState } from "react";
 import {
@@ -97,13 +97,52 @@ const geocodeAddress = async (
 };
 
 export default function SiteDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, fromMap } = useLocalSearchParams<{ id: string; fromMap?: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
   const [site, setSite] = useState<Site | null>(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [isVisited, setIsVisited] = useState(false);
   const [markingVisited, setMarkingVisited] = useState(false);
+
+  // Ensure back button works for both sites and map
+  useEffect(() => {
+    navigation.setOptions({
+      headerBackVisible: false, // Hide default back button
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() => {
+            // Try to go back, if that fails, navigate to the appropriate tab
+            try {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                // Fallback: navigate to sites or map based on where we came from
+                if (fromMap === "true") {
+                  router.push("/(tabs)/map");
+                } else {
+                  router.push("/(tabs)/sites");
+                }
+              }
+            } catch (error) {
+              // If back navigation fails, navigate to the appropriate tab
+              if (fromMap === "true") {
+                router.push("/(tabs)/map");
+              } else {
+                router.push("/(tabs)/sites");
+              }
+            }
+          }}
+          style={{ marginLeft: 10, padding: 8, minWidth: 60 }}
+        >
+          <Text style={{ color: "#000000", fontSize: 16, fontWeight: "600" }}>
+            ← Back
+          </Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, router, fromMap]);
 
   // Listen to auth state
   useEffect(() => {
