@@ -1,8 +1,9 @@
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import { onValue, ref } from "firebase/database";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   ScrollView,
   StyleSheet,
@@ -11,9 +12,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { Colors } from "@/constants/theme";
 
 import { db } from "../../firebase";
@@ -29,15 +29,23 @@ interface Site {
 }
 
 // Feature icon mapping
-const getFeatureIcon = (feature: string): keyof typeof MaterialIcons.glyphMap => {
+const getFeatureIcon = (
+  feature: string,
+): keyof typeof MaterialIcons.glyphMap => {
   const normalized = feature.toLowerCase().trim();
-  if (normalized.includes("library") || normalized.includes("book")) return "menu-book";
-  if (normalized.includes("wheelchair") || normalized.includes("accessible")) return "accessible";
-  if (normalized.includes("wifi") || normalized.includes("wi-fi")) return "wifi";
+  if (normalized.includes("library") || normalized.includes("book"))
+    return "menu-book";
+  if (normalized.includes("wheelchair") || normalized.includes("accessible"))
+    return "accessible";
+  if (normalized.includes("wifi") || normalized.includes("wi-fi"))
+    return "wifi";
   if (normalized.includes("parking")) return "local-parking";
-  if (normalized.includes("restroom") || normalized.includes("rest room")) return "wc";
-  if (normalized.includes("cafe") || normalized.includes("coffee")) return "local-cafe";
-  if (normalized.includes("gift") || normalized.includes("shop")) return "card-giftcard";
+  if (normalized.includes("restroom") || normalized.includes("rest room"))
+    return "wc";
+  if (normalized.includes("cafe") || normalized.includes("coffee"))
+    return "local-cafe";
+  if (normalized.includes("gift") || normalized.includes("shop"))
+    return "card-giftcard";
   if (normalized.includes("museum")) return "museum";
   if (normalized.includes("park")) return "park";
   if (normalized.includes("playground")) return "child-care";
@@ -56,7 +64,9 @@ const parseFeatures = (features?: string): string[] => {
 export default function SitesScreen() {
   const [sites, setSites] = useState<Site[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFeatures, setSelectedFeatures] = useState<Set<string>>(new Set());
+  const [selectedFeatures, setSelectedFeatures] = useState<Set<string>>(
+    new Set(),
+  );
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -80,7 +90,7 @@ export default function SitesScreen() {
           ([id, value]: any) => ({
             id,
             ...(value as object),
-          })
+          }),
         ) as Site[];
         setSites(sitesArray);
       } else {
@@ -118,8 +128,9 @@ export default function SitesScreen() {
         const siteFeatures = parseFeatures(site.features);
         return Array.from(selectedFeatures).every((selectedFeature) =>
           siteFeatures.some(
-            (siteFeature) => siteFeature.toLowerCase() === selectedFeature.toLowerCase()
-          )
+            (siteFeature) =>
+              siteFeature.toLowerCase() === selectedFeature.toLowerCase(),
+          ),
         );
       });
     }
@@ -184,7 +195,9 @@ export default function SitesScreen() {
                 </View>
               ))}
               {features.length > 5 && (
-                <Text style={styles.moreFeaturesText}>+{features.length - 5}</Text>
+                <Text style={styles.moreFeaturesText}>
+                  +{features.length - 5}
+                </Text>
               )}
             </View>
           )}
@@ -195,7 +208,14 @@ export default function SitesScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sites</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>Sites</Text>
+        <Image
+          source={require("@/assets/images/wander-nebraska-logo.png")}
+          style={styles.headerLogo}
+          contentFit="contain"
+        />
+      </View>
       <TextInput
         placeholder="Search by name, city, or state"
         placeholderTextColor="#666"
@@ -255,10 +275,7 @@ export default function SitesScreen() {
         </View>
       )}
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.tint} />
-          <Text style={styles.loadingText}>Loading sites...</Text>
-        </View>
+        <LoadingScreen message="Loading sites..." />
       ) : (
         <FlatList
           data={filteredSites}
@@ -289,10 +306,19 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     backgroundColor: Colors.white,
   },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  headerLogo: {
+    width: 72,
+    height: 72,
+  },
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 12,
     color: Colors.text,
   },
   searchInput: {

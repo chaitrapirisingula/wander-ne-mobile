@@ -1,10 +1,11 @@
+import { Image } from "expo-image";
 import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   User,
 } from "firebase/auth";
-import { ref, set, get } from "firebase/database";
+import { ref, set } from "firebase/database";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -39,7 +40,7 @@ const T_SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
 export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
-  
+
   // Form fields
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -58,7 +59,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password,
+      );
       onAuthSuccess(userCredential.user);
     } catch (error: any) {
       Alert.alert("Login Failed", error.message || "Invalid email or password");
@@ -84,8 +89,16 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       Alert.alert("Error", "Please select a t-shirt size");
       return;
     }
-    if (!mailingAddress.trim() || !mailingCity.trim() || !mailingState.trim() || !mailingZipCode.trim()) {
-      Alert.alert("Error", "Please enter all mailing address fields (address, city, state, and ZIP code)");
+    if (
+      !mailingAddress.trim() ||
+      !mailingCity.trim() ||
+      !mailingState.trim() ||
+      !mailingZipCode.trim()
+    ) {
+      Alert.alert(
+        "Error",
+        "Please enter all mailing address fields (address, city, state, and ZIP code)",
+      );
       return;
     }
 
@@ -94,9 +107,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email.trim(),
-        password
+        password,
       );
-      
+
       // Save user profile data to Firebase Realtime Database
       // Note: This requires Firebase Realtime Database security rules to allow writes
       try {
@@ -109,7 +122,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           mailingState: mailingState.trim(),
           mailingZipCode: mailingZipCode.trim(),
         };
-        
+
         const userProfileRef = ref(db, `users/${userCredential.user.uid}`);
         await set(userProfileRef, userProfile);
       } catch (dbError: any) {
@@ -120,11 +133,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           Alert.alert(
             "Account Created",
             "Your account was created, but there was an issue saving your profile. Please check Firebase security rules allow authenticated users to write to 'users/{userId}'.",
-            [{ text: "OK" }]
+            [{ text: "OK" }],
           );
         }
       }
-      
+
       onAuthSuccess(userCredential.user);
     } catch (error: any) {
       Alert.alert("Signup Failed", error.message || "Could not create account");
@@ -137,7 +150,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     if (!email.trim()) {
       Alert.alert(
         "Email Required",
-        "Please enter your email address in the email field above, then try again."
+        "Please enter your email address in the email field above, then try again.",
       );
       return;
     }
@@ -157,17 +170,18 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               await sendPasswordResetEmail(auth, email.trim());
               Alert.alert(
                 "Password Reset Email Sent",
-                "Please check your email for instructions to reset your password."
+                "Please check your email for instructions to reset your password.",
               );
             } catch (error: any) {
               Alert.alert(
                 "Error",
-                error.message || "Failed to send password reset email. Please check the email address."
+                error.message ||
+                  "Failed to send password reset email. Please check the email address.",
               );
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -185,15 +199,24 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   };
 
   return (
-    <ScrollView 
+    <ScrollView
       style={styles.container}
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.content}>
-        <Text style={styles.title}>{isLogin ? "Welcome Back" : "Create Account"}</Text>
+        <Image
+          source={require("@/assets/images/wander-nebraska-logo.png")}
+          style={styles.logo}
+          contentFit="contain"
+        />
+        <Text style={styles.title}>
+          {isLogin ? "Welcome Back" : "Create Account"}
+        </Text>
         <Text style={styles.subtitle}>
-          {isLogin ? "Sign in to view your profile" : "Sign up to start tracking your visits"}
+          {isLogin
+            ? "Sign in to view your profile"
+            : "Sign up to start tracking your visits"}
         </Text>
 
         {!isLogin && (
@@ -239,7 +262,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             editable={!loading}
           />
           {!isLogin && (
-            <Text style={styles.hint}>Password must be at least 6 characters</Text>
+            <Text style={styles.hint}>
+              Password must be at least 6 characters
+            </Text>
           )}
           {isLogin && (
             <TouchableOpacity
@@ -295,7 +320,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             </View>
 
             <View style={styles.inputRow}>
-              <View style={[styles.inputContainer, { flex: 2, marginRight: 10 }]}>
+              <View
+                style={[styles.inputContainer, { flex: 2, marginRight: 10 }]}
+              >
                 <Text style={styles.label}>City *</Text>
                 <TextInput
                   style={styles.input}
@@ -307,7 +334,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   editable={!loading}
                 />
               </View>
-              <View style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}>
+              <View
+                style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}
+              >
                 <Text style={styles.label}>State *</Text>
                 <TextInput
                   style={styles.input}
@@ -385,6 +414,12 @@ const styles = StyleSheet.create({
     maxWidth: 500,
     alignSelf: "center",
     width: "100%",
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    alignSelf: "center",
+    marginBottom: 16,
   },
   title: {
     fontSize: 32,
@@ -486,4 +521,3 @@ const styles = StyleSheet.create({
     textDecorationLine: "underline",
   },
 });
-

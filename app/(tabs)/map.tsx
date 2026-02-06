@@ -1,3 +1,4 @@
+import LoadingScreen from "@/components/LoadingScreen";
 import { Colors } from "@/constants/theme";
 import Constants from "expo-constants";
 import { Image } from "expo-image";
@@ -5,13 +6,7 @@ import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { onValue, ref } from "firebase/database";
 import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { db } from "../../firebase";
 
 const MAPBOX_ACCESS_TOKEN = Constants.expoConfig?.extra?.mapboxToken || "";
@@ -45,7 +40,7 @@ const NEBRASKA_CENTER = {
 const geocodeAddress = async (
   address: string,
   city?: string,
-  state?: string
+  state?: string,
 ): Promise<{ lat: number; lng: number } | null> => {
   if (!MAPBOX_ACCESS_TOKEN) {
     console.error("Mapbox access token is missing. Cannot geocode address.");
@@ -55,7 +50,7 @@ const geocodeAddress = async (
   try {
     const query = [address, city, state].filter(Boolean).join(", ");
     const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-      query
+      query,
     )}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=1`;
 
     const response = await fetch(url);
@@ -112,7 +107,7 @@ export default function MapScreen() {
           ([id, value]: any) => ({
             id,
             ...value,
-          })
+          }),
         ) as Site[];
         setSites(sitesArray);
 
@@ -148,7 +143,7 @@ export default function MapScreen() {
                 const coords = await geocodeAddress(
                   site.address,
                   site.city,
-                  site.state
+                  site.state,
                 );
                 if (
                   coords &&
@@ -161,7 +156,7 @@ export default function MapScreen() {
                 }
               }
               return null;
-            })
+            }),
           );
 
           setSitesWithCoords((prev) => [
@@ -377,12 +372,9 @@ export default function MapScreen() {
 
   if (loading || geocoding) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.tint} />
-        <Text style={styles.loadingText}>
-          {geocoding ? "Geocoding addresses..." : "Loading map..."}
-        </Text>
-      </View>
+      <LoadingScreen
+        message={geocoding ? "Geocoding addresses..." : "Loading map..."}
+      />
     );
   }
 
@@ -413,12 +405,7 @@ export default function MapScreen() {
         originWhitelist={["*"]}
         mixedContentMode="always"
         startInLoadingState={true}
-        renderLoading={() => (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.tint} />
-            <Text style={styles.loadingText}>Loading map...</Text>
-          </View>
-        )}
+        renderLoading={() => <LoadingScreen message="Loading map..." />}
         onError={(syntheticEvent: { nativeEvent: { message: string } }) => {
           console.error("WebView error: ", syntheticEvent.nativeEvent);
         }}

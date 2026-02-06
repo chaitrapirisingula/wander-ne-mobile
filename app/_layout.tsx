@@ -3,17 +3,17 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
-// Yellow, Blue, White theme
+// Wander Nebraska theme
 const AppTheme = {
   ...DefaultTheme,
   dark: false,
   colors: {
     ...DefaultTheme.colors,
-    background: "#FFFFFF", // White
-    card: "#FFFFFF", // White
-    text: "#000000", // Black text
+    background: "#FFFFFF",
+    card: "#FFFFFF",
+    text: "#000000",
     border: "#E5E5E5",
-    primary: "#007AFF", // Blue
+    primary: "#0047AB",
   },
 };
 
@@ -26,8 +26,8 @@ export default function RootLayout() {
     <ThemeProvider value={AppTheme}>
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: "#FFFFFF" },
-          headerTintColor: "#000000",
+          headerStyle: { backgroundColor: "#E5C76B" }, // Wander yellow
+          headerTintColor: "#0047AB",
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

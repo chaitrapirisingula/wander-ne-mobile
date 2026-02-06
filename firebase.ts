@@ -21,6 +21,13 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
+// Debug: verify database URL is set (required for Realtime Database)
+if (!firebaseConfig.databaseURL) {
+  console.warn(
+    "[Firebase] FIREBASE_DATABASE_URL is missing in .env - Realtime Database will not work. Add it from Firebase Console → Realtime Database.",
+  );
+}
+
 // Initialize Analytics only if supported and in a proper browser environment
 // This prevents errors in WebView contexts where document might not be fully available
 let analytics: ReturnType<typeof getAnalytics> | null = null;
@@ -50,6 +57,6 @@ if (isBrowser) {
     });
 }
 
-export { analytics };
+export { analytics, app };
 export const db = getDatabase(app);
 export const auth = getAuth(app);

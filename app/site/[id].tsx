@@ -1,7 +1,7 @@
-import { User, onAuthStateChanged } from "firebase/auth";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
-import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { User, onAuthStateChanged } from "firebase/auth";
 import { onValue, ref } from "firebase/database";
 import React, { useEffect, useState } from "react";
 import {
@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 
+import LoadingScreen from "@/components/LoadingScreen";
 import { addVisitedSite, isSiteVisited } from "@/lib/visitedSites";
 import { auth, db } from "../../firebase";
 
@@ -45,7 +46,7 @@ function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
-  lon2: number
+  lon2: number,
 ): number {
   const R = 3959; // Radius of Earth in miles
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -64,7 +65,7 @@ function calculateDistance(
 const geocodeAddress = async (
   address: string,
   city?: string,
-  state?: string
+  state?: string,
 ): Promise<{ lat: number; lng: number } | null> => {
   const MAPBOX_ACCESS_TOKEN =
     Platform.OS === "web"
@@ -78,14 +79,21 @@ const geocodeAddress = async (
 
   try {
     const query = [address, city, state].filter(Boolean).join(", ");
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=1`;
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+      query,
+    )}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=1`;
 
     const response = await fetch(url);
     const data = await response.json();
 
     if (data.features && data.features.length > 0) {
       const [lng, lat] = data.features[0].center;
-      if (typeof lat === "number" && typeof lng === "number" && !isNaN(lat) && !isNaN(lng)) {
+      if (
+        typeof lat === "number" &&
+        typeof lng === "number" &&
+        !isNaN(lat) &&
+        !isNaN(lng)
+      ) {
         return { lat, lng };
       }
     }
@@ -97,7 +105,10 @@ const geocodeAddress = async (
 };
 
 export default function SiteDetailScreen() {
-  const { id, fromMap } = useLocalSearchParams<{ id: string; fromMap?: string }>();
+  const { id, fromMap } = useLocalSearchParams<{
+    id: string;
+    fromMap?: string;
+  }>();
   const router = useRouter();
   const navigation = useNavigation();
   const [site, setSite] = useState<Site | null>(null);
@@ -136,7 +147,7 @@ export default function SiteDetailScreen() {
           }}
           style={{ marginLeft: 10, padding: 8, minWidth: 60 }}
         >
-          <Text style={{ color: "#000000", fontSize: 16, fontWeight: "600" }}>
+          <Text style={{ color: "#0047AB", fontSize: 16, fontWeight: "600" }}>
             ← Back
           </Text>
         </TouchableOpacity>
@@ -183,7 +194,7 @@ export default function SiteDetailScreen() {
       (error) => {
         console.error("Error fetching site:", error);
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -206,7 +217,7 @@ export default function SiteDetailScreen() {
               router.push("/(tabs)/profile");
             },
           },
-        ]
+        ],
       );
       return;
     }
@@ -221,7 +232,7 @@ export default function SiteDetailScreen() {
       if (status !== "granted") {
         Alert.alert(
           "Location Permission Required",
-          "Please enable location permissions to verify you're near the site."
+          "Please enable location permissions to verify you're near the site.",
         );
         setMarkingVisited(false);
         return;
@@ -241,7 +252,11 @@ export default function SiteDetailScreen() {
       // If no coordinates, try to geocode the address
       if (!siteLat || !siteLng) {
         if (site.address) {
-          const coords = await geocodeAddress(site.address, site.city, site.state);
+          const coords = await geocodeAddress(
+            site.address,
+            site.city,
+            site.state,
+          );
           if (coords) {
             siteLat = coords.lat;
             siteLng = coords.lng;
@@ -252,7 +267,7 @@ export default function SiteDetailScreen() {
       if (!siteLat || !siteLng) {
         Alert.alert(
           "Location Error",
-          "Unable to determine the site's location. Please ensure the site has an address or coordinates."
+          "Unable to determine the site's location. Please ensure the site has an address or coordinates.",
         );
         setMarkingVisited(false);
         return;
@@ -265,14 +280,22 @@ export default function SiteDetailScreen() {
       if (distanceInMiles > 1) {
         Alert.alert(
           "Too Far Away",
-          `You are ${distanceInMiles.toFixed(2)} miles away from this site. You must be within 1 mile to mark it as visited.`
+          `You are ${distanceInMiles.toFixed(
+            2,
+          )} miles away from this site. You must be within 1 mile to mark it as visited.`,
         );
         setMarkingVisited(false);
         return;
       }
 
-      // Mark as visited
-      await addVisitedSite(user.uid, {
+      // Mark as visited - use currentUser to ensure auth token is fresh
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        Alert.alert("Session Expired", "Please log in again.");
+        setMarkingVisited(false);
+        return;
+      }
+      await addVisitedSite(currentUser.uid, {
         id: site.id,
         name: site.name ?? "Unknown site",
         city: site.city,
@@ -295,28 +318,31 @@ export default function SiteDetailScreen() {
   };
 
   const handleWebsitePress = (url: string) => {
-    Alert.alert(
-      "Open Website?",
-      `Would you like to open ${url}?`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
+    Alert.alert("Open Website?", `Would you like to open ${url}?`, [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Open",
+        onPress: () => {
+          Linking.openURL(url);
         },
-        {
-          text: "Open",
-          onPress: () => {
-            Linking.openURL(url);
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
-  const handleAddressPress = (address: string, city?: string, state?: string, zipCode?: string) => {
-    const fullAddress = [address, city, state, zipCode].filter(Boolean).join(", ");
+  const handleAddressPress = (
+    address: string,
+    city?: string,
+    state?: string,
+    zipCode?: string,
+  ) => {
+    const fullAddress = [address, city, state, zipCode]
+      .filter(Boolean)
+      .join(", ");
     const encodedAddress = encodeURIComponent(fullAddress);
-    
+
     Alert.alert(
       "Open in Maps?",
       `Would you like to open directions to ${fullAddress}?`,
@@ -329,37 +355,36 @@ export default function SiteDetailScreen() {
           text: "Open",
           onPress: () => {
             // Try to open in native maps app, fallback to web
-            const mapsUrl = Platform.OS === "ios" 
-              ? `maps://maps.apple.com/?daddr=${encodedAddress}`
-              : `google.navigation:q=${encodedAddress}`;
-            
+            const mapsUrl =
+              Platform.OS === "ios"
+                ? `maps://maps.apple.com/?daddr=${encodedAddress}`
+                : `google.navigation:q=${encodedAddress}`;
+
             Linking.openURL(mapsUrl).catch(() => {
               // Fallback to web-based maps
-              Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`);
+              Linking.openURL(
+                `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`,
+              );
             });
           },
         },
-      ]
+      ],
     );
   };
 
   const handleEmailPress = (email: string) => {
-    Alert.alert(
-      "Open Email?",
-      `Would you like to send an email to ${email}?`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
+    Alert.alert("Open Email?", `Would you like to send an email to ${email}?`, [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Open",
+        onPress: () => {
+          Linking.openURL(`mailto:${email}`);
         },
-        {
-          text: "Open",
-          onPress: () => {
-            Linking.openURL(`mailto:${email}`);
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleFacebookPress = (facebook: string) => {
@@ -367,31 +392,23 @@ export default function SiteDetailScreen() {
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
       url = `https://${url}`;
     }
-    
-    Alert.alert(
-      "Open Facebook?",
-      `Would you like to open ${url}?`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
+
+    Alert.alert("Open Facebook?", `Would you like to open ${url}?`, [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Open",
+        onPress: () => {
+          Linking.openURL(url);
         },
-        {
-          text: "Open",
-          onPress: () => {
-            Linking.openURL(url);
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
+    return <LoadingScreen message="Loading site..." />;
   }
 
   if (!site) {
@@ -416,7 +433,10 @@ export default function SiteDetailScreen() {
 
         {/* Mark as Visited Button */}
         <TouchableOpacity
-          style={[styles.markVisitedButton, isVisited && styles.markVisitedButtonDisabled]}
+          style={[
+            styles.markVisitedButton,
+            isVisited && styles.markVisitedButtonDisabled,
+          ]}
           onPress={handleMarkAsVisited}
           disabled={markingVisited || isVisited}
           activeOpacity={0.8}
@@ -439,7 +459,7 @@ export default function SiteDetailScreen() {
                   site.address || "",
                   site.city,
                   site.state,
-                  site.zipCode
+                  site.zipCode,
                 )
               }
             >
@@ -491,7 +511,9 @@ export default function SiteDetailScreen() {
         {site.facebook && (
           <View style={styles.section}>
             <Text style={styles.label}>Facebook</Text>
-            <TouchableOpacity onPress={() => handleFacebookPress(site.facebook!)}>
+            <TouchableOpacity
+              onPress={() => handleFacebookPress(site.facebook!)}
+            >
               <Text style={[styles.value, styles.link]} numberOfLines={1}>
                 {site.facebook}
               </Text>

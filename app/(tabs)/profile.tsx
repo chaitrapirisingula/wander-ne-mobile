@@ -1,6 +1,6 @@
-import { User, onAuthStateChanged, signOut } from "firebase/auth";
-import { ref, get, set } from "firebase/database";
 import { Image } from "expo-image";
+import { User, onAuthStateChanged, signOut } from "firebase/auth";
+import { get, ref, set } from "firebase/database";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,12 +17,9 @@ import {
 } from "react-native";
 
 import AuthScreen from "@/components/AuthScreen";
+import LoadingScreen from "@/components/LoadingScreen";
 import { Colors } from "@/constants/theme";
-import {
-  VisitedSite,
-  clearVisitedSites,
-  getVisitedSites,
-} from "@/lib/visitedSites";
+import { VisitedSite, getVisitedSites } from "@/lib/visitedSites";
 import { useFocusEffect } from "@react-navigation/native";
 import { auth, db } from "../../firebase";
 
@@ -47,7 +44,7 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  
+
   // Edit form fields
   const [editTShirtSize, setEditTShirtSize] = useState("");
   const [editMailingAddress, setEditMailingAddress] = useState("");
@@ -62,7 +59,7 @@ export default function ProfileScreen() {
       setAuthLoading(false);
       if (currentUser) {
         loadUserProfile(currentUser.uid);
-        loadVisitedSites();
+        loadVisitedSites(currentUser.uid);
       } else {
         setUserProfile(null);
         setVisitedSites([]);
@@ -92,24 +89,33 @@ export default function ProfileScreen() {
     }
   };
 
-  const loadVisitedSites = useCallback(async () => {
-    if (!user?.uid) {
-      setVisitedSites([]);
-      setLoading(false);
-      return;
-    }
-    const data = await getVisitedSites(user.uid);
-    setVisitedSites(data);
-    setLoading(false);
-  }, [user]);
+  const loadVisitedSites = useCallback(
+    async (uid?: string) => {
+      const effectiveUid = uid ?? user?.uid;
+      if (!effectiveUid) {
+        setVisitedSites([]);
+        setLoading(false);
+        return;
+      }
+      try {
+        const data = await getVisitedSites(effectiveUid);
+        setVisitedSites(data);
+      } catch (error) {
+        setVisitedSites([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user],
+  );
 
   useFocusEffect(
     useCallback(() => {
-      if (user) {
+      if (user?.uid) {
         setLoading(true);
-        loadVisitedSites();
+        loadVisitedSites(user.uid);
       }
-    }, [user, loadVisitedSites])
+    }, [user, loadVisitedSites]),
   );
 
   const handleRefresh = useCallback(async () => {
@@ -123,58 +129,34 @@ export default function ProfileScreen() {
     }
   }, [user, loadVisitedSites]);
 
-  const handleClearHistory = useCallback(async () => {
-    if (!user?.uid) return;
-    
-    Alert.alert(
-      "Clear History",
-      "Are you sure you want to clear your visit history?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Clear",
-          style: "destructive",
-          onPress: async () => {
-            await clearVisitedSites(user.uid);
-            await loadVisitedSites();
-          },
-        },
-      ]
-    );
-  }, [user, loadVisitedSites]);
-
   const handleLogout = async () => {
-    Alert.alert(
-      "Sign Out",
-      "Are you sure you want to sign out?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await signOut(auth);
+          } catch (error: any) {
+            Alert.alert("Error", error.message || "Failed to sign out");
+          }
         },
-        {
-          text: "Sign Out",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await signOut(auth);
-            } catch (error: any) {
-              Alert.alert("Error", error.message || "Failed to sign out");
-            }
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
-  const handleAuthSuccess = useCallback(async (authenticatedUser: User) => {
-    setUser(authenticatedUser);
-    await loadUserProfile(authenticatedUser.uid);
-    await loadVisitedSites();
-  }, [loadVisitedSites]);
+  const handleAuthSuccess = useCallback(
+    async (authenticatedUser: User) => {
+      setUser(authenticatedUser);
+      await loadUserProfile(authenticatedUser.uid);
+      await loadVisitedSites();
+    },
+    [loadVisitedSites],
+  );
 
   const handleEditProfile = () => {
     if (userProfile) {
@@ -194,7 +176,12 @@ export default function ProfileScreen() {
       Alert.alert("Error", "T-Shirt size is required");
       return;
     }
-    if (!editMailingAddress.trim() || !editMailingCity.trim() || !editMailingState.trim() || !editMailingZipCode.trim()) {
+    if (
+      !editMailingAddress.trim() ||
+      !editMailingCity.trim() ||
+      !editMailingState.trim() ||
+      !editMailingZipCode.trim()
+    ) {
       Alert.alert("Error", "All mailing address fields are required");
       return;
     }
@@ -269,12 +256,7 @@ export default function ProfileScreen() {
 
   // Show loading while checking auth state
   if (authLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.tint} />
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
+    return <LoadingScreen message="Loading..." />;
   }
 
   // Show auth screen if not authenticated
@@ -284,12 +266,7 @@ export default function ProfileScreen() {
 
   // Show loading while fetching profile data
   if (loading && !userProfile) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.tint} />
-        <Text style={styles.loadingText}>Loading profile...</Text>
-      </View>
-    );
+    return <LoadingScreen message="Loading profile..." />;
   }
 
   // Show authenticated profile
@@ -297,6 +274,11 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
+          <Image
+            source={require("@/assets/images/wander-nebraska-logo.png")}
+            style={styles.headerLogo}
+            contentFit="contain"
+          />
           <Text style={styles.title}>
             {userProfile?.name ? `Hi, ${userProfile.name}` : "Your Profile"}
           </Text>
@@ -313,7 +295,15 @@ export default function ProfileScreen() {
               )}
               {(userProfile.mailingAddress || userProfile.mailingCity) && (
                 <Text style={styles.profileText}>
-                  Mailing: {[userProfile.mailingAddress, userProfile.mailingCity, userProfile.mailingState, userProfile.mailingZipCode].filter(Boolean).join(", ")}
+                  Mailing:{" "}
+                  {[
+                    userProfile.mailingAddress,
+                    userProfile.mailingCity,
+                    userProfile.mailingState,
+                    userProfile.mailingZipCode,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
                 </Text>
               )}
             </View>
@@ -351,7 +341,10 @@ export default function ProfileScreen() {
               <Text style={styles.modalCancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            style={styles.modalContent}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.inputContainer}>
               <Text style={styles.label}>T-Shirt Size *</Text>
               <View style={styles.sizeContainer}>
@@ -368,7 +361,8 @@ export default function ProfileScreen() {
                     <Text
                       style={[
                         styles.sizeButtonText,
-                        editTShirtSize === size && styles.sizeButtonTextSelected,
+                        editTShirtSize === size &&
+                          styles.sizeButtonTextSelected,
                       ]}
                     >
                       {size}
@@ -392,7 +386,9 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.inputRow}>
-              <View style={[styles.inputContainer, { flex: 2, marginRight: 10 }]}>
+              <View
+                style={[styles.inputContainer, { flex: 2, marginRight: 10 }]}
+              >
                 <Text style={styles.label}>City</Text>
                 <TextInput
                   style={styles.input}
@@ -404,7 +400,9 @@ export default function ProfileScreen() {
                   editable={!saving}
                 />
               </View>
-              <View style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}>
+              <View
+                style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}
+              >
                 <Text style={styles.label}>State</Text>
                 <TextInput
                   style={styles.input}
@@ -448,18 +446,6 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      {visitedSites.length > 0 && (
-        <View style={styles.clearSection}>
-          <TouchableOpacity
-            style={styles.clearButton}
-            onPress={handleClearHistory}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.clearButtonText}>Clear history</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       <FlatList
         data={visitedSites}
         keyExtractor={(item) => item.id}
@@ -496,6 +482,11 @@ const styles = StyleSheet.create({
   headerLeft: {
     marginBottom: 12,
   },
+  headerLogo: {
+    width: 48,
+    height: 48,
+    marginBottom: 8,
+  },
   title: {
     fontSize: 28,
     fontWeight: "bold",
@@ -525,20 +516,6 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontWeight: "600",
     fontSize: 14,
-  },
-  clearSection: {
-    marginBottom: 12,
-  },
-  clearButton: {
-    backgroundColor: Colors.secondary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignSelf: "flex-start",
-  },
-  clearButtonText: {
-    color: Colors.text,
-    fontWeight: "600",
   },
   listContent: {
     paddingBottom: 40,
