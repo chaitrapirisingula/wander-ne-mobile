@@ -25,12 +25,13 @@ interface Site {
   state?: string;
   image?: string;
   features?: string;
+  special50?: boolean;
   [key: string]: any;
 }
 
 // Feature icon mapping
 const getFeatureIcon = (
-  feature: string,
+  feature: string
 ): keyof typeof MaterialIcons.glyphMap => {
   const normalized = feature.toLowerCase().trim();
   if (normalized.includes("library") || normalized.includes("book"))
@@ -65,8 +66,9 @@ export default function SitesScreen() {
   const [sites, setSites] = useState<Site[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFeatures, setSelectedFeatures] = useState<Set<string>>(
-    new Set(),
+    new Set()
   );
+  const [filterSpecial50, setFilterSpecial50] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -90,7 +92,7 @@ export default function SitesScreen() {
           ([id, value]: any) => ({
             id,
             ...(value as object),
-          }),
+          })
         ) as Site[];
         setSites(sitesArray);
       } else {
@@ -122,6 +124,11 @@ export default function SitesScreen() {
       });
     }
 
+    // Filter by special50
+    if (filterSpecial50) {
+      filtered = filtered.filter((site) => site.special50 === true);
+    }
+
     // Filter by selected features
     if (selectedFeatures.size > 0) {
       filtered = filtered.filter((site) => {
@@ -129,14 +136,14 @@ export default function SitesScreen() {
         return Array.from(selectedFeatures).every((selectedFeature) =>
           siteFeatures.some(
             (siteFeature) =>
-              siteFeature.toLowerCase() === selectedFeature.toLowerCase(),
-          ),
+              siteFeature.toLowerCase() === selectedFeature.toLowerCase()
+          )
         );
       });
     }
 
     return filtered;
-  }, [searchQuery, selectedFeatures, sites]);
+  }, [searchQuery, selectedFeatures, filterSpecial50, sites]);
 
   const toggleFeature = (feature: string) => {
     const newSelected = new Set(selectedFeatures);
@@ -172,6 +179,15 @@ export default function SitesScreen() {
           ) : (
             <View style={styles.imagePlaceholder}>
               <Text style={styles.imagePlaceholderText}>No Image</Text>
+            </View>
+          )}
+          {item.special50 && (
+            <View style={styles.special50Badge}>
+              <Image
+                source={require("@/assets/images/your-parks-adventure-logo.png")}
+                style={styles.special50Logo}
+                contentFit="contain"
+              />
             </View>
           )}
         </View>
@@ -226,14 +242,38 @@ export default function SitesScreen() {
         autoCorrect={false}
         clearButtonMode="while-editing"
       />
-      {allFeatures.length > 0 && (
+      {(allFeatures.length > 0 || sites.some((s) => s.special50)) && (
         <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>Filter by Features:</Text>
+          <Text style={styles.filterLabel}>Filter:</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filterChips}
           >
+            {sites.some((s) => s.special50) && (
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  filterSpecial50 && styles.filterChipSelected,
+                ]}
+                onPress={() => setFilterSpecial50(!filterSpecial50)}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={require("@/assets/images/your-parks-adventure-logo.png")}
+                  style={styles.filterChipLogo}
+                  contentFit="contain"
+                />
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    filterSpecial50 && styles.filterChipTextSelected,
+                  ]}
+                >
+                  Special 50
+                </Text>
+              </TouchableOpacity>
+            )}
             {allFeatures.map((feature) => {
               const isSelected = selectedFeatures.has(feature);
               return (
@@ -264,10 +304,13 @@ export default function SitesScreen() {
               );
             })}
           </ScrollView>
-          {selectedFeatures.size > 0 && (
+          {(selectedFeatures.size > 0 || filterSpecial50) && (
             <TouchableOpacity
               style={styles.clearFilters}
-              onPress={() => setSelectedFeatures(new Set())}
+              onPress={() => {
+                setSelectedFeatures(new Set());
+                setFilterSpecial50(false);
+              }}
             >
               <Text style={styles.clearFiltersText}>Clear filters</Text>
             </TouchableOpacity>
@@ -287,7 +330,7 @@ export default function SitesScreen() {
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No sites found</Text>
               <Text style={styles.emptySubtitle}>
-                {selectedFeatures.size > 0
+                {selectedFeatures.size > 0 || filterSpecial50
                   ? "Try adjusting your filters or search to find sites."
                   : "Try adjusting your search to find a site by name, city, or state."}
               </Text>
@@ -352,6 +395,23 @@ const styles = StyleSheet.create({
     height: 120,
     backgroundColor: "#EFEFEF",
     overflow: "hidden",
+    position: "relative",
+  },
+  special50Badge: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    padding: 2,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  special50Logo: {
+    width: 32,
+    height: 32,
   },
   image: {
     width: 120,
@@ -443,6 +503,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.tint,
   },
   filterChipIcon: {
+    marginRight: 4,
+  },
+  filterChipLogo: {
+    width: 18,
+    height: 18,
     marginRight: 4,
   },
   filterChipText: {

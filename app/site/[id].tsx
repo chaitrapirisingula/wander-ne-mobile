@@ -39,6 +39,7 @@ interface Site {
   facebook?: string;
   latitude?: number;
   longitude?: number;
+  special50?: boolean;
 }
 
 // Calculate distance between two coordinates in miles (Haversine formula)
@@ -46,7 +47,7 @@ function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
-  lon2: number,
+  lon2: number
 ): number {
   const R = 3959; // Radius of Earth in miles
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -65,7 +66,7 @@ function calculateDistance(
 const geocodeAddress = async (
   address: string,
   city?: string,
-  state?: string,
+  state?: string
 ): Promise<{ lat: number; lng: number } | null> => {
   const MAPBOX_ACCESS_TOKEN =
     Platform.OS === "web"
@@ -80,7 +81,7 @@ const geocodeAddress = async (
   try {
     const query = [address, city, state].filter(Boolean).join(", ");
     const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-      query,
+      query
     )}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=1`;
 
     const response = await fetch(url);
@@ -194,7 +195,7 @@ export default function SiteDetailScreen() {
       (error) => {
         console.error("Error fetching site:", error);
         setLoading(false);
-      },
+      }
     );
 
     return () => unsubscribe();
@@ -217,7 +218,7 @@ export default function SiteDetailScreen() {
               router.push("/(tabs)/profile");
             },
           },
-        ],
+        ]
       );
       return;
     }
@@ -232,7 +233,7 @@ export default function SiteDetailScreen() {
       if (status !== "granted") {
         Alert.alert(
           "Location Permission Required",
-          "Please enable location permissions to verify you're near the site.",
+          "Please enable location permissions to verify you're near the site."
         );
         setMarkingVisited(false);
         return;
@@ -255,7 +256,7 @@ export default function SiteDetailScreen() {
           const coords = await geocodeAddress(
             site.address,
             site.city,
-            site.state,
+            site.state
           );
           if (coords) {
             siteLat = coords.lat;
@@ -267,7 +268,7 @@ export default function SiteDetailScreen() {
       if (!siteLat || !siteLng) {
         Alert.alert(
           "Location Error",
-          "Unable to determine the site's location. Please ensure the site has an address or coordinates.",
+          "Unable to determine the site's location. Please ensure the site has an address or coordinates."
         );
         setMarkingVisited(false);
         return;
@@ -281,8 +282,8 @@ export default function SiteDetailScreen() {
         Alert.alert(
           "Too Far Away",
           `You are ${distanceInMiles.toFixed(
-            2,
-          )} miles away from this site. You must be within 1 mile to mark it as visited.`,
+            2
+          )} miles away from this site. You must be within 1 mile to mark it as visited.`
         );
         setMarkingVisited(false);
         return;
@@ -301,6 +302,7 @@ export default function SiteDetailScreen() {
         city: site.city,
         state: site.state,
         image: site.image,
+        special50: site.special50,
       });
 
       setIsVisited(true);
@@ -336,7 +338,7 @@ export default function SiteDetailScreen() {
     address: string,
     city?: string,
     state?: string,
-    zipCode?: string,
+    zipCode?: string
   ) => {
     const fullAddress = [address, city, state, zipCode]
       .filter(Boolean)
@@ -363,12 +365,12 @@ export default function SiteDetailScreen() {
             Linking.openURL(mapsUrl).catch(() => {
               // Fallback to web-based maps
               Linking.openURL(
-                `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`,
+                `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`
               );
             });
           },
         },
-      ],
+      ]
     );
   };
 
@@ -431,6 +433,29 @@ export default function SiteDetailScreen() {
       <View style={styles.content}>
         <Text style={styles.name}>{site.name}</Text>
 
+        {site.special50 && (
+          <View style={styles.special50Section}>
+            <Image
+              source={require("@/assets/images/your-parks-adventure-logo.png")}
+              style={styles.special50Logo}
+              contentFit="contain"
+            />
+            <Text style={styles.special50Text}>
+              This site is one of the 50 designated Trail Trek & WanderNebraska
+              Special Sites. Celebrate Nebraska's history and natural beauty!
+            </Text>
+            <TouchableOpacity
+              onPress={() =>
+                handleWebsitePress("https://yourparksadventure.com")
+              }
+            >
+              <Text style={[styles.value, styles.link]}>
+                Learn more at yourparksadventure.com
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Mark as Visited Button */}
         <TouchableOpacity
           style={[
@@ -459,7 +484,7 @@ export default function SiteDetailScreen() {
                   site.address || "",
                   site.city,
                   site.state,
-                  site.zipCode,
+                  site.zipCode
                 )
               }
             >
@@ -614,6 +639,25 @@ const styles = StyleSheet.create({
   link: {
     color: "#007AFF",
     textDecorationLine: "underline",
+  },
+  special50Section: {
+    backgroundColor: "#F0F8F0",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#C8E6C9",
+  },
+  special50Logo: {
+    width: 64,
+    height: 64,
+    marginBottom: 12,
+  },
+  special50Text: {
+    fontSize: 15,
+    color: "#333",
+    lineHeight: 22,
+    marginBottom: 12,
   },
   errorText: {
     fontSize: 18,

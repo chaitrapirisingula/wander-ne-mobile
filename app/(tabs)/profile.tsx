@@ -35,6 +35,18 @@ interface UserProfile {
 
 const T_SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
 
+const PRIZE_LEVELS = [
+  { name: "Memory Maker", stops: 10, prize: "Koozie" },
+  { name: "Nebraska Voyager", stops: 25, prize: "T-Shirt" },
+  { name: "Nebraska Trailblazer", stops: 40, prize: "Tote" },
+  { name: "Navigator Extraordinaire", stops: 50, prize: "Sun Visor" },
+  {
+    name: "Epic Expeditionist",
+    stops: null,
+    prize: "All Prizes & More (Top 5)",
+  },
+] as const;
+
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -44,6 +56,8 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<"visits" | "prizes">("visits");
 
   // Edit form fields
   const [editTShirtSize, setEditTShirtSize] = useState("");
@@ -106,7 +120,7 @@ export default function ProfileScreen() {
         setLoading(false);
       }
     },
-    [user],
+    [user]
   );
 
   useFocusEffect(
@@ -115,7 +129,7 @@ export default function ProfileScreen() {
         setLoading(true);
         loadVisitedSites(user.uid);
       }
-    }, [user, loadVisitedSites]),
+    }, [user, loadVisitedSites])
   );
 
   const handleRefresh = useCallback(async () => {
@@ -155,7 +169,7 @@ export default function ProfileScreen() {
       await loadUserProfile(authenticatedUser.uid);
       await loadVisitedSites();
     },
-    [loadVisitedSites],
+    [loadVisitedSites]
   );
 
   const handleEditProfile = () => {
@@ -238,6 +252,15 @@ export default function ProfileScreen() {
           ) : (
             <View style={styles.imagePlaceholder}>
               <Text style={styles.imagePlaceholderText}>No Image</Text>
+            </View>
+          )}
+          {item.special50 && (
+            <View style={styles.special50Badge}>
+              <Image
+                source={require("@/assets/images/your-parks-adventure-logo.png")}
+                style={styles.special50Logo}
+                contentFit="contain"
+              />
             </View>
           )}
         </View>
@@ -446,25 +469,132 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      <FlatList
-        data={visitedSites}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={
-          visitedSites.length === 0 ? styles.emptyList : styles.listContent
-        }
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No visits yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Visit a site to start tracking your progress across Nebraska.
-            </Text>
-          </View>
-        }
-      />
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "visits" && styles.tabActive]}
+          onPress={() => setActiveTab("visits")}
+          activeOpacity={0.8}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "visits" && styles.tabTextActive,
+            ]}
+          >
+            My Visits
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "prizes" && styles.tabActive]}
+          onPress={() => setActiveTab("prizes")}
+          activeOpacity={0.8}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "prizes" && styles.tabTextActive,
+            ]}
+          >
+            Prize Progress
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === "visits" ? (
+        <FlatList
+          data={visitedSites}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={
+            visitedSites.length === 0 ? styles.emptyList : styles.listContent
+          }
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>No visits yet</Text>
+              <Text style={styles.emptySubtitle}>
+                Visit a site to start tracking your progress across Nebraska.
+              </Text>
+            </View>
+          }
+        />
+      ) : (
+        <ScrollView
+          style={styles.prizeScroll}
+          contentContainerStyle={styles.prizeContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.prizeHeader}>
+            {visitedSites.length} of 50+ stops
+          </Text>
+          <Text style={styles.prizeSubheader}>
+            Visit more sites to unlock prizes!
+          </Text>
+          {PRIZE_LEVELS.map((level) => {
+            const count = visitedSites.length;
+            const isTopTier = level.stops === null;
+            const target = isTopTier ? 50 : level.stops!;
+            const reached = !isTopTier && count >= target;
+            const qualifiedForTop5 = isTopTier && count >= 50;
+            const progress = isTopTier
+              ? qualifiedForTop5
+                ? "50+ stops – qualified for top 5!"
+                : `${count}/50 stops to qualify`
+              : `${Math.min(count, target)}/${target}`;
+
+            return (
+              <View
+                key={level.name}
+                style={[
+                  styles.prizeCard,
+                  (reached || qualifiedForTop5) && styles.prizeCardEarned,
+                ]}
+              >
+                <View style={styles.prizeCardLeft}>
+                  <Text
+                    style={[
+                      styles.prizeLevelName,
+                      (reached || qualifiedForTop5) &&
+                        styles.prizeLevelNameEarned,
+                    ]}
+                  >
+                    {level.name}
+                  </Text>
+                  <Text style={styles.prizeName}>{level.prize}</Text>
+                  <Text
+                    style={[
+                      styles.prizeProgress,
+                      (reached || qualifiedForTop5) &&
+                        styles.prizeProgressEarned,
+                    ]}
+                  >
+                    {reached
+                      ? "✓ Earned"
+                      : isTopTier
+                      ? progress
+                      : `${progress} stops`}
+                  </Text>
+                </View>
+                {(!reached || isTopTier) && (
+                  <View style={styles.prizeBarBg}>
+                    <View
+                      style={[
+                        styles.prizeBarFill,
+                        {
+                          width: `${Math.min(100, (count / target) * 100)}%`,
+                        },
+                      ]}
+                    />
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -517,6 +647,96 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
   },
+  tabContainer: {
+    flexDirection: "row",
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E8E8E8",
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+  },
+  tabActive: {
+    borderBottomColor: Colors.primary,
+  },
+  tabText: {
+    fontSize: 15,
+    color: "#666",
+    fontWeight: "500",
+  },
+  tabTextActive: {
+    color: Colors.primary,
+    fontWeight: "600",
+  },
+  prizeScroll: {
+    flex: 1,
+  },
+  prizeContent: {
+    paddingBottom: 40,
+  },
+  prizeHeader: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  prizeSubheader: {
+    fontSize: 15,
+    color: "#666",
+    marginBottom: 20,
+  },
+  prizeCard: {
+    backgroundColor: "#FAFAFA",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E8E8E8",
+  },
+  prizeCardEarned: {
+    backgroundColor: "#E8F5E9",
+    borderColor: Colors.secondary,
+  },
+  prizeCardLeft: {
+    marginBottom: 8,
+  },
+  prizeLevelName: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  prizeLevelNameEarned: {
+    color: "#2E7D32",
+  },
+  prizeName: {
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 6,
+  },
+  prizeProgress: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: "500",
+  },
+  prizeProgressEarned: {
+    color: "#2E7D32",
+  },
+  prizeBarBg: {
+    height: 6,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  prizeBarFill: {
+    height: "100%",
+    backgroundColor: Colors.primary,
+    borderRadius: 3,
+  },
   listContent: {
     paddingBottom: 40,
   },
@@ -537,6 +757,23 @@ const styles = StyleSheet.create({
     height: 120,
     backgroundColor: "#EFEFEF",
     overflow: "hidden",
+    position: "relative",
+  },
+  special50Badge: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    padding: 2,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  special50Logo: {
+    width: 32,
+    height: 32,
   },
   image: {
     width: 120,

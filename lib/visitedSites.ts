@@ -14,7 +14,7 @@ function logDbError(operation: string, error: unknown) {
   };
   if (isPermissionDenied) {
     console.warn(
-      `[Firebase DB] ${operation}: Permission denied. Add userVisitedSites rules in Firebase Console → Realtime Database → Rules. See FIREBASE_SECURITY_RULES.md`,
+      `[Firebase DB] ${operation}: Permission denied. Add userVisitedSites rules in Firebase Console → Realtime Database → Rules. See FIREBASE_SECURITY_RULES.md`
     );
   } else {
     console.error(`[Firebase DB] ${operation} failed:`, logPayload);
@@ -27,6 +27,7 @@ export interface VisitedSite {
   city?: string;
   state?: string;
   image?: string;
+  special50?: boolean;
   visitedAt: string;
 }
 
@@ -46,7 +47,7 @@ export async function getVisitedSites(userId: string): Promise<VisitedSite[]> {
 
 export async function addVisitedSite(
   userId: string,
-  site: Omit<VisitedSite, "visitedAt">,
+  site: Omit<VisitedSite, "visitedAt">
 ) {
   try {
     const visitedAt = new Date().toISOString();
@@ -72,7 +73,7 @@ export async function clearVisitedSites(userId: string) {
 
 export async function isSiteVisited(
   userId: string,
-  siteId: string,
+  siteId: string
 ): Promise<boolean> {
   try {
     const visitedRef = ref(db, `userVisitedSites/${userId}/${siteId}`);
