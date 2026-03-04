@@ -36,14 +36,35 @@ interface UserProfile {
 const T_SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
 
 const PRIZE_LEVELS = [
-  { name: "Memory Maker", stops: 10, prize: "Koozie" },
-  { name: "Nebraska Voyager", stops: 25, prize: "T-Shirt" },
-  { name: "Nebraska Trailblazer", stops: 40, prize: "Tote" },
-  { name: "Navigator Extraordinaire", stops: 50, prize: "Sun Visor" },
+  {
+    name: "Memory Maker",
+    stops: 10,
+    prize: "Koozie",
+    image: require("@/assets/images/koozie_prize.png"),
+  },
+  {
+    name: "Nebraska Voyager",
+    stops: 25,
+    prize: "T-Shirt",
+    image: require("@/assets/images/shirt_prize.png"),
+  },
+  {
+    name: "Nebraska Trailblazer",
+    stops: 40,
+    prize: "Tote",
+    image: require("@/assets/images/tote_prize.png"),
+  },
+  {
+    name: "Navigator Extraordinaire",
+    stops: 50,
+    prize: "Sun Visor",
+    image: null,
+  },
   {
     name: "Epic Expeditionist",
     stops: null,
     prize: "All Prizes & More (Top 5)",
+    image: null,
   },
 ] as const;
 
@@ -553,30 +574,39 @@ export default function ProfileScreen() {
                   (reached || qualifiedForTop5) && styles.prizeCardEarned,
                 ]}
               >
-                <View style={styles.prizeCardLeft}>
-                  <Text
-                    style={[
-                      styles.prizeLevelName,
-                      (reached || qualifiedForTop5) &&
-                        styles.prizeLevelNameEarned,
-                    ]}
-                  >
-                    {level.name}
-                  </Text>
-                  <Text style={styles.prizeName}>{level.prize}</Text>
-                  <Text
-                    style={[
-                      styles.prizeProgress,
-                      (reached || qualifiedForTop5) &&
-                        styles.prizeProgressEarned,
-                    ]}
-                  >
-                    {reached
-                      ? "✓ Earned"
-                      : isTopTier
-                      ? progress
-                      : `${progress} stops`}
-                  </Text>
+                <View style={styles.prizeCardRow}>
+                  {level.image != null && (
+                    <Image
+                      source={level.image}
+                      style={styles.prizeCardImage}
+                      contentFit="contain"
+                    />
+                  )}
+                  <View style={styles.prizeCardLeft}>
+                    <Text
+                      style={[
+                        styles.prizeLevelName,
+                        (reached || qualifiedForTop5) &&
+                          styles.prizeLevelNameEarned,
+                      ]}
+                    >
+                      {level.name}
+                    </Text>
+                    <Text style={styles.prizeName}>{level.prize}</Text>
+                    <Text
+                      style={[
+                        styles.prizeProgress,
+                        (reached || qualifiedForTop5) &&
+                          styles.prizeProgressEarned,
+                      ]}
+                    >
+                      {reached
+                        ? "✓ Earned"
+                        : isTopTier
+                        ? progress
+                        : `${progress} stops`}
+                    </Text>
+                  </View>
                 </View>
                 {(!reached || isTopTier) && (
                   <View style={styles.prizeBarBg}>
@@ -701,8 +731,18 @@ const styles = StyleSheet.create({
     backgroundColor: "#E8F5E9",
     borderColor: Colors.secondary,
   },
-  prizeCardLeft: {
+  prizeCardRow: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
+  },
+  prizeCardImage: {
+    width: 56,
+    height: 56,
+    marginRight: 14,
+  },
+  prizeCardLeft: {
+    flex: 1,
   },
   prizeLevelName: {
     fontSize: 17,
