@@ -40,7 +40,7 @@ const NEBRASKA_CENTER = {
 const geocodeAddress = async (
   address: string,
   city?: string,
-  state?: string,
+  state?: string
 ): Promise<{ lat: number; lng: number } | null> => {
   if (!MAPBOX_ACCESS_TOKEN) {
     console.error("Mapbox access token is missing. Cannot geocode address.");
@@ -50,7 +50,7 @@ const geocodeAddress = async (
   try {
     const query = [address, city, state].filter(Boolean).join(", ");
     const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-      query,
+      query
     )}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=1`;
 
     const response = await fetch(url);
@@ -99,81 +99,90 @@ export default function MapScreen() {
     })();
 
     // Fetch sites from Firebase
-    const sitesRef = ref(db, "2025_sites");
-    const unsubscribe = onValue(sitesRef, async (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const sitesArray = Object.entries(data as any).map(
-          ([id, value]: any) => ({
-            id,
-            ...value,
-          }),
-        ) as Site[];
-        setSites(sitesArray);
+    const sitesRef = ref(db, "2026_sites");
+    const unsubscribe = onValue(
+      sitesRef,
+      async (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const sitesArray = Object.entries(data as any).map(
+            ([id, value]: any) => ({
+              id,
+              ...value,
+            })
+          ) as Site[];
+          setSites(sitesArray);
 
-        // Process sites with existing coordinates first
-        const initialSitesWithCoords: Array<
-          Site & { lat: number; lng: number }
-        > = [];
-        const sitesToGeocode: Site[] = [];
+          // Process sites with existing coordinates first
+          const initialSitesWithCoords: Array<
+            Site & { lat: number; lng: number }
+          > = [];
+          const sitesToGeocode: Site[] = [];
 
-        sitesArray.forEach((site) => {
-          let lat: number | undefined = site.latitude;
-          let lng: number | undefined = site.longitude;
+          sitesArray.forEach((site) => {
+            let lat: number | undefined = site.latitude;
+            let lng: number | undefined = site.longitude;
 
-          if (
-            typeof lat === "number" &&
-            typeof lng === "number" &&
-            !isNaN(lat) &&
-            !isNaN(lng)
-          ) {
-            initialSitesWithCoords.push({ ...site, lat, lng });
-          } else {
-            sitesToGeocode.push(site);
-          }
-        });
-        setSitesWithCoords(initialSitesWithCoords);
+            if (
+              typeof lat === "number" &&
+              typeof lng === "number" &&
+              !isNaN(lat) &&
+              !isNaN(lng)
+            ) {
+              initialSitesWithCoords.push({ ...site, lat, lng });
+            } else {
+              sitesToGeocode.push(site);
+            }
+          });
+          setSitesWithCoords(initialSitesWithCoords);
 
-        // Geocode remaining addresses
-        if (sitesToGeocode.length > 0) {
-          setGeocoding(true);
-          const geocodedResults = await Promise.all(
-            sitesToGeocode.map(async (site) => {
-              if (site.address) {
-                const coords = await geocodeAddress(
-                  site.address,
-                  site.city,
-                  site.state,
-                );
-                if (
-                  coords &&
-                  typeof coords.lat === "number" &&
-                  typeof coords.lng === "number" &&
-                  !isNaN(coords.lat) &&
-                  !isNaN(coords.lng)
-                ) {
-                  return { ...site, lat: coords.lat, lng: coords.lng };
+          // Geocode remaining addresses
+          if (sitesToGeocode.length > 0) {
+            setGeocoding(true);
+            const geocodedResults = await Promise.all(
+              sitesToGeocode.map(async (site) => {
+                if (site.address) {
+                  const coords = await geocodeAddress(
+                    site.address,
+                    site.city,
+                    site.state
+                  );
+                  if (
+                    coords &&
+                    typeof coords.lat === "number" &&
+                    typeof coords.lng === "number" &&
+                    !isNaN(coords.lat) &&
+                    !isNaN(coords.lng)
+                  ) {
+                    return { ...site, lat: coords.lat, lng: coords.lng };
+                  }
                 }
-              }
-              return null;
-            }),
-          );
+                return null;
+              })
+            );
 
-          setSitesWithCoords((prev) => [
-            ...prev,
-            ...(geocodedResults.filter(Boolean) as Array<
-              Site & { lat: number; lng: number }
-            >),
-          ]);
-          setGeocoding(false);
+            setSitesWithCoords((prev) => [
+              ...prev,
+              ...(geocodedResults.filter(Boolean) as Array<
+                Site & { lat: number; lng: number }
+              >),
+            ]);
+            setGeocoding(false);
+          }
+          setLoading(false);
+        } else {
+          setSites([]);
+          setSitesWithCoords([]);
+          setLoading(false);
         }
-        setLoading(false);
-      } else {
+      },
+      (error) => {
+        console.error("Error loading sites for map:", error);
         setSites([]);
         setSitesWithCoords([]);
         setLoading(false);
       }
-    });
+    );
 
     return () => unsubscribe();
   }, []);
@@ -425,12 +434,20 @@ export default function MapScreen() {
             activeOpacity={0.9}
           >
             <View style={styles.siteCardContent}>
-              {selectedSite.image && (
+              {selectedSite.image ? (
                 <Image
                   source={{ uri: selectedSite.image }}
                   style={styles.siteCardImage}
                   contentFit="cover"
                 />
+              ) : (
+                <View style={styles.siteCardDefaultImage}>
+                  <Image
+                    source={require("@/assets/images/wander-nebraska-logo.png")}
+                    style={styles.siteCardDefaultLogo}
+                    contentFit="contain"
+                  />
+                </View>
               )}
               <View style={styles.siteCardText}>
                 <Text style={styles.siteCardName} numberOfLines={2}>
@@ -550,6 +567,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 10,
     backgroundColor: "#EFEFEF",
+  },
+  siteCardDefaultImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 10,
+    backgroundColor: "#F0F0F0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  siteCardDefaultLogo: {
+    width: 48,
+    height: 48,
   },
   siteCardText: {
     flex: 1,

@@ -84,7 +84,7 @@ export default function SitesScreen() {
   }, [sites]);
 
   useEffect(() => {
-    const sitesRef = ref(db, "2025_sites");
+    const sitesRef = ref(db, "2026_sites");
     const unsubscribe = onValue(sitesRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
@@ -177,8 +177,12 @@ export default function SitesScreen() {
               contentFit="cover"
             />
           ) : (
-            <View style={styles.imagePlaceholder}>
-              <Text style={styles.imagePlaceholderText}>No Image</Text>
+            <View style={styles.defaultImageWrapper}>
+              <Image
+                source={require("@/assets/images/wander-nebraska-logo.png")}
+                style={styles.defaultImageLogo}
+                contentFit="contain"
+              />
             </View>
           )}
           {item.special50 && (
@@ -416,6 +420,17 @@ const styles = StyleSheet.create({
   image: {
     width: 120,
     height: 120,
+  },
+  defaultImageWrapper: {
+    width: 120,
+    height: 120,
+    backgroundColor: "#F0F0F0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  defaultImageLogo: {
+    width: 72,
+    height: 72,
   },
   imagePlaceholder: {
     flex: 1,
