@@ -13,10 +13,9 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#E5C76B",
+        "foregroundImage": "./assets/images/wander-nebraska-logo.png",
+        "backgroundImage": "./assets/images/map-bg.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
