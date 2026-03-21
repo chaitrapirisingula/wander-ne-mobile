@@ -10,7 +10,18 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install
    ```
 
-2. Start the app
+2. Environment variables
+
+   Copy `.env.example` to `.env` and fill in Firebase and Mapbox values.  
+   **EAS builds** do not use your local `.env` file — add the same variables in [expo.dev](https://expo.dev) → your project → **Environment variables** (for the `production` environment), or with:
+
+   ```bash
+   eas env:create --name FIREBASE_API_KEY --value "your-key" --environment production
+   ```
+
+   Repeat for each key from `.env.example`. Without them, `app.config.ts` embeds empty Firebase config and the app can crash on launch.
+
+3. Start the app
 
    ```bash
    npx expo start

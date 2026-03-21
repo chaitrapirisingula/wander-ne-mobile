@@ -206,7 +206,7 @@ export default function SiteDetailScreen() {
     if (!user) {
       Alert.alert(
         "Login Required",
-        "You must be logged in to mark a site as visited. Would you like to go to your profile to log in?",
+        "You must be logged in to check in. Would you like to go to your profile to log in?",
         [
           {
             text: "Cancel",
@@ -278,12 +278,12 @@ export default function SiteDetailScreen() {
       const distance = calculateDistance(userLat, userLng, siteLat, siteLng);
       const distanceInMiles = distance;
 
-      if (distanceInMiles > 1) {
+      if (distanceInMiles > 0.25) {
         Alert.alert(
           "Too Far Away",
           `You are ${distanceInMiles.toFixed(
             2
-          )} miles away from this site. You must be within 1 mile to mark it as visited.`
+          )} miles away from this site. You must be within 1/4 mile to check in.`
         );
         setMarkingVisited(false);
         return;
@@ -306,10 +306,10 @@ export default function SiteDetailScreen() {
       });
 
       setIsVisited(true);
-      Alert.alert("Success", "Site marked as visited!");
+      Alert.alert("Success", "Checked in!");
     } catch (error: any) {
       console.error("Error marking as visited:", error);
-      Alert.alert("Error", error.message || "Failed to mark site as visited");
+      Alert.alert("Error", error.message || "Failed to check in");
     } finally {
       setMarkingVisited(false);
     }
@@ -464,7 +464,7 @@ export default function SiteDetailScreen() {
           </View>
         )}
 
-        {/* Mark as Visited Button */}
+        {/* Check In Button */}
         <TouchableOpacity
           style={[
             styles.markVisitedButton,
@@ -478,7 +478,7 @@ export default function SiteDetailScreen() {
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <Text style={styles.markVisitedButtonText}>
-              {isVisited ? "✓ Already Visited" : "Mark as Visited"}
+              {isVisited ? "✓ Visited" : "Check In"}
             </Text>
           )}
         </TouchableOpacity>
