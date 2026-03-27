@@ -19,6 +19,7 @@ import {
 import AuthScreen from "@/components/AuthScreen";
 import LoadingScreen from "@/components/LoadingScreen";
 import { Colors } from "@/constants/theme";
+import { isSpecial50Site } from "@/lib/special50";
 import { VisitedSite, getVisitedSites } from "@/lib/visitedSites";
 import { useFocusEffect } from "@react-navigation/native";
 import { auth, db } from "../../firebase";
@@ -279,7 +280,7 @@ export default function ProfileScreen() {
               />
             </View>
           )}
-          {item.special50 && (
+          {isSpecial50Site(item.special50) && (
             <View style={styles.special50Badge}>
               <Image
                 source={require("@/assets/images/your-parks-adventure-logo.png")}

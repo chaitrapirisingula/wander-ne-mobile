@@ -17,6 +17,7 @@ import {
 } from "react-native";
 
 import LoadingScreen from "@/components/LoadingScreen";
+import { isSpecial50Site } from "@/lib/special50";
 import { addVisitedSite, isSiteVisited } from "@/lib/visitedSites";
 import { auth, db } from "../../firebase";
 
@@ -441,7 +442,7 @@ export default function SiteDetailScreen() {
       <View style={styles.content}>
         <Text style={styles.name}>{site.name}</Text>
 
-        {site.special50 && (
+        {isSpecial50Site(site.special50) && (
           <View style={styles.special50Section}>
             <Image
               source={require("@/assets/images/your-parks-adventure-logo.png")}

@@ -15,6 +15,7 @@ import {
 
 import LoadingScreen from "@/components/LoadingScreen";
 import { Colors } from "@/constants/theme";
+import { isSpecial50Site } from "@/lib/special50";
 
 import { db } from "../../firebase";
 
@@ -124,9 +125,9 @@ export default function SitesScreen() {
       });
     }
 
-    // Filter by special50
+    // Filter by special50 (DB may store boolean, string "true", or 1)
     if (filterSpecial50) {
-      filtered = filtered.filter((site) => site.special50 === true);
+      filtered = filtered.filter((site) => isSpecial50Site(site.special50));
     }
 
     // Filter by selected features
@@ -185,7 +186,7 @@ export default function SitesScreen() {
               />
             </View>
           )}
-          {item.special50 && (
+          {isSpecial50Site(item.special50) && (
             <View style={styles.special50Badge}>
               <Image
                 source={require("@/assets/images/your-parks-adventure-logo.png")}
@@ -246,7 +247,7 @@ export default function SitesScreen() {
         autoCorrect={false}
         clearButtonMode="while-editing"
       />
-      {(allFeatures.length > 0 || sites.some((s) => s.special50)) && (
+      {(allFeatures.length > 0 || sites.some((s) => isSpecial50Site(s.special50))) && (
         <View style={styles.filterSection}>
           <Text style={styles.filterLabel}>Filter:</Text>
           <ScrollView
@@ -254,7 +255,7 @@ export default function SitesScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filterChips}
           >
-            {sites.some((s) => s.special50) && (
+            {sites.some((s) => isSpecial50Site(s.special50)) && (
               <TouchableOpacity
                 style={[
                   styles.filterChip,
