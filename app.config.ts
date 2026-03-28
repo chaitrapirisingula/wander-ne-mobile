@@ -1,5 +1,33 @@
 import "dotenv/config";
 
+/** Required for store-ready builds; validated during EAS `production` profile only. */
+const PRODUCTION_ENV_KEYS = [
+  "FIREBASE_API_KEY",
+  "FIREBASE_AUTH_DOMAIN",
+  "FIREBASE_DATABASE_URL",
+  "FIREBASE_PROJECT_ID",
+  "FIREBASE_STORAGE_BUCKET",
+  "FIREBASE_MESSAGING_SENDER_ID",
+  "FIREBASE_APP_ID",
+  "MAPBOX_ACCESS_TOKEN",
+] as const;
+
+if (
+  process.env.EAS_BUILD === "true" &&
+  process.env.EAS_BUILD_PROFILE === "production"
+) {
+  const missing = PRODUCTION_ENV_KEYS.filter(
+    (key) => !String(process.env[key] ?? "").trim(),
+  );
+  if (missing.length > 0) {
+    throw new Error(
+      `EAS production build: missing environment variables: ${missing.join(
+        ", ",
+      )}. In expo.dev open this project → Environment variables → ensure each exists for the Production environment (and eas.json production profile uses "environment": "production").`,
+    );
+  }
+}
+
 export default {
   expo: {
     name: "wanderne-mobile",
