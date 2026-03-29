@@ -43,7 +43,7 @@ export default ({ config }: { config: ExpoConfig }): ExpoConfig => {
   return {
     ...config,
     name: "WanderNebraska",
-    slug: config.slug ?? "wanderne-mobile",
+    slug: "wanderne-mobile",
     icon: "./assets/images/icon.png",
     ios: {
       ...config.ios,
