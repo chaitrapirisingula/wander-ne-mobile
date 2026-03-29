@@ -30,7 +30,7 @@ if (
 
 export default {
   expo: {
-    name: "wanderne-mobile",
+    name: "WanderNebraska",
     slug: "wanderne-mobile",
     icon: "./assets/images/icon.png",
     ios: {
