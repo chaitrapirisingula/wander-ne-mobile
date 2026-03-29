@@ -1,25 +1,54 @@
 import Constants from "expo-constants";
 import { getAnalytics, isSupported } from "firebase/analytics";
-import { initializeApp } from "firebase/app";
+import { initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
-const extra = Constants.expoConfig?.extra;
+/** Resolve `extra` from embedded config (release builds can differ slightly from dev). */
+function getExpoExtra(): Record<string, unknown> | undefined {
+  const fromExpo = Constants.expoConfig?.extra;
+  if (fromExpo && typeof fromExpo === "object") {
+    return fromExpo as Record<string, unknown>;
+  }
+  const legacy = Constants.manifest as { extra?: Record<string, unknown> } | null;
+  if (legacy?.extra && typeof legacy.extra === "object") {
+    return legacy.extra;
+  }
+  return undefined;
+}
+
+const extra = getExpoExtra();
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: extra?.firebaseApiKey,
-  authDomain: extra?.firebaseAuthDomain,
-  databaseURL: extra?.firebaseDatabaseUrl,
-  projectId: extra?.firebaseProjectId,
-  storageBucket: extra?.firebaseStorageBucket,
-  messagingSenderId: extra?.firebaseMessagingSenderId,
-  appId: extra?.firebaseAppId,
+  apiKey: extra?.firebaseApiKey as string | undefined,
+  authDomain: extra?.firebaseAuthDomain as string | undefined,
+  databaseURL: extra?.firebaseDatabaseUrl as string | undefined,
+  projectId: extra?.firebaseProjectId as string | undefined,
+  storageBucket: extra?.firebaseStorageBucket as string | undefined,
+  messagingSenderId: extra?.firebaseMessagingSenderId as string | undefined,
+  appId: extra?.firebaseAppId as string | undefined,
 };
 
+const hasCoreFirebase =
+  typeof firebaseConfig.apiKey === "string" &&
+  firebaseConfig.apiKey.length > 0 &&
+  typeof firebaseConfig.projectId === "string" &&
+  firebaseConfig.projectId.length > 0 &&
+  typeof firebaseConfig.appId === "string" &&
+  firebaseConfig.appId.length > 0;
+
+let app: FirebaseApp;
+if (!hasCoreFirebase) {
+  const msg =
+    "Firebase config is missing in this build. For EAS production, set all Firebase env vars in expo.dev (Production) and run a new eas build — local .env is not used on EAS.";
+  console.error(msg, { hasExtra: !!extra });
+  throw new Error(msg);
+}
+
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+app = initializeApp(firebaseConfig);
 
 // Debug: verify database URL is set (required for Realtime Database)
 if (!firebaseConfig.databaseURL) {

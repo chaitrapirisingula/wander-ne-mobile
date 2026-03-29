@@ -34,6 +34,12 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow WanderNebraska to use your location to show nearby sites and verify check-ins."
+        }
       ]
     ],
     "experiments": {
