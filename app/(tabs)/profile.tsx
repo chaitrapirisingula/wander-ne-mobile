@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
-import { User, onAuthStateChanged, signOut } from "firebase/auth";
-import { get, ref, set } from "firebase/database";
+import { User, deleteUser, onAuthStateChanged, signOut } from "firebase/auth";
+import { get, ref, remove, set } from "firebase/database";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -20,7 +20,7 @@ import AuthScreen from "@/components/AuthScreen";
 import LoadingScreen from "@/components/LoadingScreen";
 import { Colors } from "@/constants/theme";
 import { isSpecial50Site } from "@/lib/special50";
-import { VisitedSite, getVisitedSites } from "@/lib/visitedSites";
+import { VisitedSite, clearVisitedSites, getVisitedSites } from "@/lib/visitedSites";
 import { useFocusEffect } from "@react-navigation/native";
 import { auth, db } from "../../firebase";
 
@@ -78,6 +78,7 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const [activeTab, setActiveTab] = useState<"visits" | "prizes">("visits");
 
@@ -183,6 +184,64 @@ export default function ProfileScreen() {
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    if (!user) return;
+
+    Alert.alert(
+      "Delete Account?",
+      "This will permanently delete your account and visit history. This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert(
+              "Are you absolutely sure?",
+              "Your data will be permanently removed.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Yes, Delete Account",
+                  style: "destructive",
+                  onPress: async () => {
+                    try {
+                      setDeletingAccount(true);
+                      const uid = user.uid;
+
+                      // Remove app data first, then delete auth account.
+                      await Promise.all([
+                        remove(ref(db, `users/${uid}`)),
+                        clearVisitedSites(uid),
+                      ]);
+
+                      await deleteUser(user);
+                    } catch (error: any) {
+                      console.error("Error deleting account:", error);
+                      if (error?.code === "auth/requires-recent-login") {
+                        Alert.alert(
+                          "Re-authentication Required",
+                          "Please sign out, sign back in, and try deleting your account again."
+                        );
+                      } else {
+                        Alert.alert(
+                          "Error",
+                          error.message || "Failed to delete account"
+                        );
+                      }
+                    } finally {
+                      setDeletingAccount(false);
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
   };
 
   const handleAuthSuccess = useCallback(
@@ -372,6 +431,21 @@ export default function ProfileScreen() {
             activeOpacity={0.8}
           >
             <Text style={styles.logoutButtonText}>Sign Out</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.deleteAccountButton,
+              deletingAccount && styles.deleteAccountButtonDisabled,
+            ]}
+            onPress={handleDeleteAccount}
+            disabled={deletingAccount}
+            activeOpacity={0.8}
+          >
+            {deletingAccount ? (
+              <ActivityIndicator color={Colors.white} />
+            ) : (
+              <Text style={styles.deleteAccountButtonText}>Delete Account</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -678,6 +752,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   logoutButtonText: {
+    color: Colors.white,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  deleteAccountButton: {
+    alignSelf: "flex-start",
+    backgroundColor: "#B3261E",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  deleteAccountButtonDisabled: {
+    opacity: 0.7,
+  },
+  deleteAccountButtonText: {
     color: Colors.white,
     fontWeight: "600",
     fontSize: 14,
