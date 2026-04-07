@@ -444,14 +444,25 @@ export default function SiteDetailScreen() {
 
         {isSpecial50Site(site.special50) && (
           <View style={styles.special50Section}>
-            <Image
-              source={require("@/assets/images/your-parks-adventure-logo.png")}
-              style={styles.special50Logo}
-              contentFit="contain"
-            />
+            <View style={styles.special50LogoRow}>
+              <Image
+                source={require("@/assets/images/your-parks-adventure-logo.png")}
+                style={styles.special50LogoParks}
+                contentFit="contain"
+              />
+              <Image
+                source={require("@/assets/images/wander-nebraska-logo.png")}
+                style={styles.special50LogoWander}
+                contentFit="contain"
+              />
+            </View>
             <Text style={styles.special50Text}>
               This site is one of the 50 designated Trail Trek & WanderNebraska
-              Special Sites. Celebrate Nebraska's history and natural beauty!
+              Special Sites.
+            </Text>
+            <Text style={styles.special50Text}>
+              To check in, find the Trail Trek sign, snap a selfie, then scan the
+              QR code to submit your photo and register your stop.
             </Text>
             <TouchableOpacity
               onPress={() =>
@@ -668,10 +679,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#C8E6C9",
   },
-  special50Logo: {
+  special50LogoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  special50LogoParks: {
     width: 64,
     height: 64,
-    marginBottom: 12,
+  },
+  special50LogoWander: {
+    width: 76,
+    height: 76,
   },
   special50Text: {
     fontSize: 15,

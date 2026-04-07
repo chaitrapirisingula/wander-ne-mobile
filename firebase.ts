@@ -1,7 +1,15 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import {
+  AuthErrorCodes,
+  getAuth,
+  initializeAuth,
+  type Auth,
+  type Persistence,
+} from "firebase/auth";
+import { Platform } from "react-native";
 import { getDatabase } from "firebase/database";
 
 /** Resolve `extra` from embedded config (release builds can differ slightly from dev). */
@@ -88,4 +96,30 @@ if (isBrowser) {
 
 export { analytics, app };
 export const db = getDatabase(app);
-export const auth = getAuth(app);
+
+function createAuth(): Auth {
+  if (Platform.OS === "web") {
+    return getAuth(app);
+  }
+  try {
+    // Metro resolves `@firebase/auth` to the RN build, which includes `getReactNativePersistence`.
+    // The root package typings omit it, so we load at runtime instead of a typed static import.
+    const { getReactNativePersistence } = require("@firebase/auth") as {
+      getReactNativePersistence: (storage: typeof AsyncStorage) => Persistence;
+    };
+    return initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } catch (error: unknown) {
+    const code =
+      error && typeof error === "object" && "code" in error
+        ? String((error as { code?: string }).code)
+        : "";
+    if (code === AuthErrorCodes.ALREADY_INITIALIZED) {
+      return getAuth(app);
+    }
+    throw error;
+  }
+}
+
+export const auth = createAuth();

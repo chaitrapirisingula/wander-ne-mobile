@@ -2,7 +2,6 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { Colors } from "@/constants/theme";
 import Constants from "expo-constants";
 import { Image } from "expo-image";
-import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { onValue, ref } from "firebase/database";
 import React, { useEffect, useState } from "react";
@@ -30,11 +29,12 @@ interface Site {
   image?: string;
 }
 
-// Default center for Nebraska
+// Default center (approx. geographic center of Nebraska) when no sites / before fit
 const NEBRASKA_CENTER = {
   lat: 41.4925,
   lng: -99.9018,
 };
+const NEBRASKA_DEFAULT_ZOOM = 5;
 
 // Geocode address using Mapbox Geocoding API
 const geocodeAddress = async (
@@ -72,32 +72,12 @@ export default function MapScreen() {
   const [sitesWithCoords, setSitesWithCoords] = useState<
     Array<Site & { lat: number; lng: number }>
   >([]);
-  const [userLocation, setUserLocation] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [geocoding, setGeocoding] = useState(false);
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    // Request location permission
-    (async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === "granted") {
-          const location = await Location.getCurrentPositionAsync({});
-          setUserLocation({
-            lat: location.coords.latitude,
-            lng: location.coords.longitude,
-          });
-        }
-      } catch (error) {
-        console.error("Error getting location:", error);
-      }
-    })();
-
     // Fetch sites from Firebase
     const sitesRef = ref(db, "2026_sites");
     const unsubscribe = onValue(
@@ -199,18 +179,15 @@ export default function MapScreen() {
   const handleSiteCardPress = () => {
     if (selectedSite) {
       router.push({
-        pathname: `/site/${selectedSite.id}`,
-        params: { fromMap: "true" },
+        pathname: "/site/[id]",
+        params: { id: selectedSite.id, fromMap: "true" },
       });
     }
   };
 
-  // Generate HTML for Mapbox map
+  // Generate HTML for Mapbox map (always start from Nebraska; fit all markers when loaded)
   const generateMapHTML = () => {
-    let center = userLocation || NEBRASKA_CENTER;
-    if (!center.lat || !center.lng || isNaN(center.lat) || isNaN(center.lng)) {
-      center = NEBRASKA_CENTER;
-    }
+    const center = NEBRASKA_CENTER;
 
     // Prepare marker data - Mapbox uses [longitude, latitude]
     const markerData = sitesWithCoords
@@ -271,7 +248,7 @@ export default function MapScreen() {
             container: 'map',
             style: 'mapbox://styles/mapbox/streets-v12',
             center: [centerLng, centerLat],
-            zoom: ${userLocation ? 10 : 6},
+            zoom: ${NEBRASKA_DEFAULT_ZOOM},
             attributionControl: false
           });
 
@@ -320,6 +297,33 @@ export default function MapScreen() {
                 console.error('Error creating marker for site:', site.name, err);
               }
             });
+
+            if (markerData.length > 0) {
+              try {
+                var bounds = new mapboxgl.LngLatBounds();
+                var didExtend = false;
+                markerData.forEach(function(site) {
+                  var lng = Number(site.coordinates[0]);
+                  var lat = Number(site.coordinates[1]);
+                  if (!isNaN(lng) && !isNaN(lat) &&
+                      lng >= -180 && lng <= 180 &&
+                      lat >= -90 && lat <= 90 &&
+                      !(lng === 0 && lat === 0)) {
+                    bounds.extend([lng, lat]);
+                    didExtend = true;
+                  }
+                });
+                if (didExtend) {
+                  map.fitBounds(bounds, {
+                    padding: { top: 56, bottom: 56, left: 48, right: 48 },
+                    maxZoom: 10,
+                    duration: 0
+                  });
+                }
+              } catch (fitErr) {
+                console.error('fitBounds error:', fitErr);
+              }
+            }
           });
 
           map.on('click', function(e) {

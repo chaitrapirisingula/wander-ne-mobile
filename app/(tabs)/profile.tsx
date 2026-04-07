@@ -432,21 +432,6 @@ export default function ProfileScreen() {
           >
             <Text style={styles.logoutButtonText}>Sign Out</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.deleteAccountButton,
-              deletingAccount && styles.deleteAccountButtonDisabled,
-            ]}
-            onPress={handleDeleteAccount}
-            disabled={deletingAccount}
-            activeOpacity={0.8}
-          >
-            {deletingAccount ? (
-              <ActivityIndicator color={Colors.white} />
-            ) : (
-              <Text style={styles.deleteAccountButtonText}>Delete Account</Text>
-            )}
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -565,6 +550,29 @@ export default function ProfileScreen() {
                 <Text style={styles.saveButtonText}>Save Changes</Text>
               )}
             </TouchableOpacity>
+
+            <View style={styles.modalDangerSection}>
+              <Text style={styles.modalDangerTitle}>Account</Text>
+              <Text style={styles.modalDangerSubtitle}>
+                Permanently delete your account and visit history. This cannot
+                be undone.
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.deleteAccountButton,
+                  (saving || deletingAccount) && styles.deleteAccountButtonDisabled,
+                ]}
+                onPress={handleDeleteAccount}
+                disabled={saving || deletingAccount}
+                activeOpacity={0.8}
+              >
+                {deletingAccount ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={styles.deleteAccountButtonText}>Delete Account</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </ScrollView>
         </View>
       </Modal>
@@ -757,11 +765,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   deleteAccountButton: {
-    alignSelf: "flex-start",
+    alignSelf: "stretch",
     backgroundColor: "#B3261E",
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 50,
   },
   deleteAccountButtonDisabled: {
     opacity: 0.7,
@@ -1089,8 +1100,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 20,
-    marginBottom: 40,
+    marginBottom: 8,
     minHeight: 50,
+  },
+  modalDangerSection: {
+    marginTop: 24,
+    marginBottom: 40,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: "#E8E8E8",
+  },
+  modalDangerTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.text,
+    marginBottom: 6,
+  },
+  modalDangerSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
+    marginBottom: 16,
   },
   saveButtonDisabled: {
     opacity: 0.6,
