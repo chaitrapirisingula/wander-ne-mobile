@@ -48,7 +48,6 @@ export default ({ config }: { config: ExpoConfig }): ExpoConfig => {
     ios: {
       ...config.ios,
       bundleIdentifier: "com.wandernebraska.mobile",
-      buildNumber: "1",
     },
     android: {
       ...config.android,
