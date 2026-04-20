@@ -4,7 +4,9 @@ import { useRouter } from "expo-router";
 import { onValue, ref } from "firebase/database";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   FlatList,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +17,7 @@ import {
 
 import LoadingScreen from "@/components/LoadingScreen";
 import { Colors } from "@/constants/theme";
+import { formatFeatureLabel } from "@/lib/featureDisplay";
 import { isSpecial50Site } from "@/lib/special50";
 
 import { db } from "../../firebase";
@@ -30,17 +33,90 @@ interface Site {
   [key: string]: any;
 }
 
-// Feature icon mapping
+interface Sponsor {
+  id: string;
+  city?: string;
+  link?: string;
+}
+
+function pickFirstString(
+  obj: Record<string, unknown>,
+  keys: string[]
+): string | undefined {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return undefined;
+}
+
+/** RTDB may use city/link or City/Link (or url). */
+function sponsorCityFromRecord(r: Record<string, unknown>): string | undefined {
+  return pickFirstString(r, ["city", "City", "cityName", "location"]);
+}
+
+function sponsorLinkFromRecord(r: Record<string, unknown>): string | undefined {
+  return pickFirstString(r, ["link", "Link", "url", "URL", "website", "href"]);
+}
+
+/** "Lincoln, NE" → "lincoln" so city and chamber matching behave like a city search. */
+function primarySearchToken(searchQuery: string): string {
+  const t = searchQuery.trim().toLowerCase();
+  if (!t) return "";
+  return t.split(",")[0]?.trim() ?? t;
+}
+
+function normalizeChamberUrl(raw: string): string {
+  const t = raw.trim();
+  if (!t) return "";
+  if (/^https?:\/\//i.test(t)) return t;
+  return `https://${t}`;
+}
+
+/** Exact labels from site data (case-insensitive keys). */
+const FEATURE_ICON_EXACT: Record<
+  string,
+  keyof typeof MaterialIcons.glyphMap
+> = {
+  "large group friendly": "groups",
+  "native american centric": "diversity-3",
+  "pet-friendly": "pets",
+  "pet friendly": "pets",
+  "picnic area": "outdoor-grill",
+  "restaurants near by": "local-dining",
+  "restaurants nearby": "local-dining",
+};
+
+// Feature icon mapping — check specific phrases before generic substrings (e.g. parking before park).
 const getFeatureIcon = (
   feature: string
 ): keyof typeof MaterialIcons.glyphMap => {
   const normalized = feature.toLowerCase().trim();
+  const exact = FEATURE_ICON_EXACT[normalized];
+  if (exact) return exact;
+
+  if (
+    normalized.includes("native american") ||
+    normalized.includes("indigenous")
+  )
+    return "diversity-3";
+  if (normalized.includes("large group") || normalized.includes("group friendly"))
+    return "groups";
+  if (normalized.includes("pet-friendly") || normalized.includes("pet friendly"))
+    return "pets";
+  if (normalized.includes("picnic")) return "outdoor-grill";
+  if (
+    normalized.includes("restaurant") ||
+    normalized.includes("dining near") ||
+    normalized.includes("eateries near")
+  )
+    return "local-dining";
+
   if (normalized.includes("library") || normalized.includes("book"))
     return "menu-book";
   if (normalized.includes("wheelchair") || normalized.includes("accessible"))
     return "accessible";
-  if (normalized.includes("wifi") || normalized.includes("wi-fi"))
-    return "wifi";
+  if (normalized.includes("wifi") || normalized.includes("wi-fi")) return "wifi";
   if (normalized.includes("parking")) return "local-parking";
   if (normalized.includes("restroom") || normalized.includes("rest room"))
     return "wc";
@@ -49,9 +125,10 @@ const getFeatureIcon = (
   if (normalized.includes("gift") || normalized.includes("shop"))
     return "card-giftcard";
   if (normalized.includes("museum")) return "museum";
-  if (normalized.includes("park")) return "park";
   if (normalized.includes("playground")) return "child-care";
-  return "star"; // Default icon
+  if (normalized.includes("park")) return "park";
+
+  return "place";
 };
 
 // Parse features string into array
@@ -63,8 +140,27 @@ const parseFeatures = (features?: string): string[] => {
     .filter(Boolean);
 };
 
+/** Match filter-chip order (same as `allFeatures`: sorted union of all site labels). */
+const orderFeaturesLikeFilters = (
+  parsed: string[],
+  canonicalSorted: string[]
+): string[] => {
+  const indexByLower = new Map(
+    canonicalSorted.map((label, i) => [label.toLowerCase(), i])
+  );
+  return [...parsed].sort((a, b) => {
+    const ia = indexByLower.get(a.toLowerCase());
+    const ib = indexByLower.get(b.toLowerCase());
+    if (ia !== undefined && ib !== undefined) return ia - ib;
+    if (ia !== undefined) return -1;
+    if (ib !== undefined) return 1;
+    return a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
+  });
+};
+
 export default function SitesScreen() {
   const [sites, setSites] = useState<Site[]>([]);
+  const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFeatures, setSelectedFeatures] = useState<Set<string>>(
     new Set()
@@ -105,19 +201,73 @@ export default function SitesScreen() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const sponsorsRef = ref(db, "2026_sponsors");
+    const unsubscribe = onValue(sponsorsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const list = Object.entries(data as Record<string, unknown>).map(
+          ([id, value]) => {
+            const rest =
+              typeof value === "object" && value !== null
+                ? (value as Record<string, unknown>)
+                : {};
+            return { id, ...rest } as Sponsor;
+          }
+        );
+        setSponsors(list);
+      } else {
+        setSponsors([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const matchingSponsors = useMemo(() => {
+    const q = primarySearchToken(searchQuery);
+    if (!q) return [];
+    const matched = sponsors.filter((s) => {
+      const rec = s as Record<string, unknown>;
+      const city = sponsorCityFromRecord(rec);
+      const link = sponsorLinkFromRecord(rec);
+      if (!city || !link) return false;
+      const cl = city.toLowerCase();
+      return cl.includes(q) || (q.length >= 2 && q.includes(cl));
+    });
+    return [...matched].sort((a, b) =>
+      (sponsorCityFromRecord(a as Record<string, unknown>) ?? "").localeCompare(
+        sponsorCityFromRecord(b as Record<string, unknown>) ?? "",
+        undefined,
+        { sensitivity: "base", numeric: true }
+      )
+    );
+  }, [sponsors, searchQuery]);
+
+  const openChamberWebsite = (link: string) => {
+    const url = normalizeChamberUrl(link);
+    if (!url) return;
+    Alert.alert("Open website?", `Open this chamber website?\n\n${url}`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Open",
+        onPress: () => {
+          Linking.openURL(url).catch(() => {
+            Alert.alert("Error", "Could not open the link.");
+          });
+        },
+      },
+    ]);
+  };
+
   const filteredSites = useMemo(() => {
     let filtered = sites;
 
-    // Filter by search query
-    const query = searchQuery.toLowerCase().trim();
+    // Filter by search query (same city token as chamber banner, e.g. before comma)
+    const query = primarySearchToken(searchQuery);
     if (query) {
       filtered = filtered.filter((site) => {
-        const valuesToSearch = [
-          site.name,
-          site.city,
-          site.state,
-          site.city && site.state ? `${site.city} ${site.state}` : undefined,
-        ]
+        const valuesToSearch = [site.name, site.city]
           .filter(Boolean)
           .map((value) => String(value).toLowerCase());
 
@@ -143,7 +293,12 @@ export default function SitesScreen() {
       });
     }
 
-    return filtered;
+    return [...filtered].sort((a, b) =>
+      (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+        sensitivity: "base",
+        numeric: true,
+      })
+    );
   }, [searchQuery, selectedFeatures, filterSpecial50, sites]);
 
   const toggleFeature = (feature: string) => {
@@ -161,8 +316,11 @@ export default function SitesScreen() {
   };
 
   const renderSiteCard = ({ item }: { item: Site }) => {
-    const locationLabel = [item.city, item.state].filter(Boolean).join(", ");
-    const features = parseFeatures(item.features);
+    const locationLabel = item.city?.trim() || "";
+    const features = orderFeaturesLikeFilters(
+      parseFeatures(item.features),
+      allFeatures
+    );
 
     return (
       <TouchableOpacity
@@ -207,7 +365,7 @@ export default function SitesScreen() {
           {features.length > 0 && (
             <View style={styles.featuresContainer}>
               {features.slice(0, 5).map((feature, index) => (
-                <View key={index} style={styles.featureTag}>
+                <View key={`${item.id}-f-${index}`} style={styles.featureTag}>
                   <MaterialIcons
                     name={getFeatureIcon(feature)}
                     size={14}
@@ -238,15 +396,53 @@ export default function SitesScreen() {
         />
       </View>
       <TextInput
-        placeholder="Search by name, city, or state"
+        placeholder="Search by name or city"
         placeholderTextColor="#666"
-        style={styles.searchInput}
+        style={[
+          styles.searchInput,
+          matchingSponsors.length > 0 && styles.searchInputWithSponsorBelow,
+        ]}
         value={searchQuery}
         onChangeText={setSearchQuery}
         autoCapitalize="words"
         autoCorrect={false}
         clearButtonMode="while-editing"
       />
+      {matchingSponsors.length > 0 && (
+        <View style={styles.sponsorChamberSection}>
+          <Text style={styles.sponsorChamberLabel}>Chamber of commerce sponsors</Text>
+          {matchingSponsors.map((s, index) => {
+            const rec = s as Record<string, unknown>;
+            const cityLabel = sponsorCityFromRecord(rec) ?? "";
+            const linkRaw = sponsorLinkFromRecord(rec) ?? "";
+            return (
+              <TouchableOpacity
+                key={s.id}
+                style={[
+                  styles.sponsorChamberRow,
+                  index === matchingSponsors.length - 1 &&
+                    styles.sponsorChamberRowLast,
+                ]}
+                onPress={() => openChamberWebsite(linkRaw)}
+                activeOpacity={0.75}
+              >
+                <MaterialIcons
+                  name="open-in-new"
+                  size={18}
+                  color={Colors.tint}
+                  style={styles.sponsorChamberIcon}
+                />
+                <View style={styles.sponsorChamberTextCol}>
+                  <Text style={styles.sponsorChamberCity}>{cityLabel}</Text>
+                  <Text style={styles.sponsorChamberUrl} numberOfLines={2}>
+                    {normalizeChamberUrl(linkRaw).replace(/^https:\/\//i, "")}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
       {(allFeatures.length > 0 || sites.some((s) => isSpecial50Site(s.special50))) && (
         <View style={styles.filterSection}>
           <Text style={styles.filterLabel}>Filter:</Text>
@@ -303,7 +499,7 @@ export default function SitesScreen() {
                       isSelected && styles.filterChipTextSelected,
                     ]}
                   >
-                    {feature}
+                    {formatFeatureLabel(feature)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -337,7 +533,7 @@ export default function SitesScreen() {
               <Text style={styles.emptySubtitle}>
                 {selectedFeatures.size > 0 || filterSpecial50
                   ? "Try adjusting your filters or search to find sites."
-                  : "Try adjusting your search to find a site by name, city, or state."}
+                  : "Try adjusting your search or filters."}
               </Text>
             </View>
           }
@@ -379,6 +575,53 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E1E1E1",
     color: Colors.text,
+  },
+  searchInputWithSponsorBelow: {
+    marginBottom: 10,
+  },
+  sponsorChamberSection: {
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: "#F0F7FF",
+    borderWidth: 1,
+    borderColor: "#C5DCF5",
+  },
+  sponsorChamberLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: Colors.text,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 10,
+  },
+  sponsorChamberRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 10,
+  },
+  sponsorChamberRowLast: {
+    marginBottom: 0,
+  },
+  sponsorChamberIcon: {
+    marginRight: 10,
+    marginTop: 2,
+  },
+  sponsorChamberTextCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sponsorChamberCity: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  sponsorChamberUrl: {
+    fontSize: 13,
+    color: Colors.tint,
+    textDecorationLine: "underline",
   },
   listContent: {
     paddingBottom: 40,

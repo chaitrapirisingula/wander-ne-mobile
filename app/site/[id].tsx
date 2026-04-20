@@ -17,6 +17,7 @@ import {
 } from "react-native";
 
 import LoadingScreen from "@/components/LoadingScreen";
+import { formatFeatureLabel } from "@/lib/featureDisplay";
 import { isSpecial50Site } from "@/lib/special50";
 import { addVisitedSite, isSiteVisited } from "@/lib/visitedSites";
 import { auth, db } from "../../firebase";
@@ -476,24 +477,25 @@ export default function SiteDetailScreen() {
           </View>
         )}
 
-        {/* Check In Button */}
-        <TouchableOpacity
-          style={[
-            styles.markVisitedButton,
-            isVisited && styles.markVisitedButtonDisabled,
-          ]}
-          onPress={handleMarkAsVisited}
-          disabled={markingVisited || isVisited}
-          activeOpacity={0.8}
-        >
-          {markingVisited ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.markVisitedButtonText}>
-              {isVisited ? "✓ Visited" : "Check In"}
-            </Text>
-          )}
-        </TouchableOpacity>
+        {!isSpecial50Site(site.special50) && (
+          <TouchableOpacity
+            style={[
+              styles.markVisitedButton,
+              isVisited && styles.markVisitedButtonDisabled,
+            ]}
+            onPress={handleMarkAsVisited}
+            disabled={markingVisited || isVisited}
+            activeOpacity={0.8}
+          >
+            {markingVisited ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.markVisitedButtonText}>
+                {isVisited ? "✓ Visited" : "Check In"}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         {(site.address || site.city) && (
           <View style={styles.section}>
@@ -569,7 +571,7 @@ export default function SiteDetailScreen() {
         {site.features && (
           <View style={styles.section}>
             <Text style={styles.label}>Features</Text>
-            <Text style={styles.value}>{site.features}</Text>
+            <Text style={styles.value}>{formatFeatureLabel(site.features)}</Text>
           </View>
         )}
 

@@ -211,7 +211,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           contentFit="contain"
         />
         <Text style={styles.title}>
-          {isLogin ? "Welcome Back" : "Create Account"}
+          {isLogin ? "Welcome" : "Create Account"}
         </Text>
         <Text style={styles.subtitle}>
           {isLogin
@@ -376,7 +376,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             <ActivityIndicator color={Colors.white} />
           ) : (
             <Text style={styles.buttonText}>
-              {isLogin ? "Sign In" : "Sign Up"}
+              {isLogin ? "Sign In" : "Sign up"}
             </Text>
           )}
         </TouchableOpacity>
@@ -389,7 +389,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         >
           <Text style={styles.switchText}>
             {isLogin
-              ? "Don't have an account? Sign Up"
+              ? "Don't have an account? Sign up"
               : "Already have an account? Sign In"}
           </Text>
         </TouchableOpacity>
