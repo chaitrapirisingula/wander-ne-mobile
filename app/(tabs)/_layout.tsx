@@ -1,9 +1,14 @@
 import { Tabs } from "expo-router";
 import React from "react";
+import { PixelRatio } from "react-native";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
+
+const fontScale = PixelRatio.getFontScale();
+const tabBarExtraVertical =
+  fontScale > 1 ? Math.min(14, Math.round((fontScale - 1) * 12)) : 0;
 
 export default function TabLayout() {
   return (
@@ -16,6 +21,8 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
         tabBarStyle: {
           backgroundColor: Colors.footer,
+          paddingTop: 4 + tabBarExtraVertical,
+          paddingBottom: 4 + tabBarExtraVertical,
         },
       }}
     >

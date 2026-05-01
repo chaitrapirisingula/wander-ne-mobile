@@ -7,6 +7,7 @@ import { onValue, ref } from "firebase/database";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Linking,
+  PixelRatio,
   ScrollView,
   StyleSheet,
   Text,
@@ -163,7 +164,10 @@ export default function SharedEventsScreen() {
     return <LoadingScreen message="Loading shared events..." />;
   }
 
-  const scrollBottomPad = 28 + insets.bottom + 52;
+  const fs = PixelRatio.getFontScale();
+  const tabBarReserve =
+    52 + (fs > 1 ? Math.min(14, Math.round((fs - 1) * 12)) : 0);
+  const scrollBottomPad = 28 + insets.bottom + tabBarReserve;
 
   return (
     <View style={styles.screen}>

@@ -628,15 +628,14 @@ const styles = StyleSheet.create({
   },
   card: {
     flexDirection: "row",
+    alignItems: "flex-start",
     marginBottom: 16,
     borderRadius: 14,
     backgroundColor: "#FAFAFA",
     borderWidth: 1,
     borderColor: "#E8E8E8",
     overflow: "hidden",
-    height: 120,
     minHeight: 120,
-    maxHeight: 120,
   },
   imageWrapper: {
     width: 120,
@@ -688,9 +687,9 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1,
     padding: 14,
-    justifyContent: "center",
+    justifyContent: "flex-start",
     minHeight: 120,
-    maxHeight: 120,
+    alignSelf: "stretch",
   },
   name: {
     fontSize: 18,

@@ -539,7 +539,7 @@ export default function SiteDetailScreen() {
           <View style={styles.section}>
             <Text style={styles.label}>Website</Text>
             <TouchableOpacity onPress={() => handleWebsitePress(site.website!)}>
-              <Text style={[styles.value, styles.link]} numberOfLines={1}>
+              <Text style={[styles.value, styles.link]} selectable>
                 {site.website}
               </Text>
             </TouchableOpacity>
@@ -561,7 +561,7 @@ export default function SiteDetailScreen() {
             <TouchableOpacity
               onPress={() => handleFacebookPress(site.facebook!)}
             >
-              <Text style={[styles.value, styles.link]} numberOfLines={1}>
+              <Text style={[styles.value, styles.link]} selectable>
                 {site.facebook}
               </Text>
             </TouchableOpacity>
@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
   },
   special50LogoRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 12,
     marginBottom: 12,
   },

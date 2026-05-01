@@ -454,11 +454,11 @@ export default function MapScreen() {
                 </View>
               )}
               <View style={styles.siteCardText}>
-                <Text style={styles.siteCardName} numberOfLines={2}>
+                <Text style={styles.siteCardName}>
                   {selectedSite.name}
                 </Text>
                 {(selectedSite.city || selectedSite.state) && (
-                  <Text style={styles.siteCardLocation} numberOfLines={1}>
+                  <Text style={styles.siteCardLocation}>
                     {[selectedSite.city, selectedSite.state]
                       .filter(Boolean)
                       .join(", ")}
@@ -558,12 +558,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   siteCardContent: {
     flex: 1,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   siteCardImage: {
     width: 60,

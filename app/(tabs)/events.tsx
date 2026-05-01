@@ -20,11 +20,13 @@ import { get, onValue, ref } from "firebase/database";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Modal,
+  PixelRatio,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -128,6 +130,7 @@ function EventBlock({
 export default function EventsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const [sites, setSites] = useState<Site[]>([]);
   const [events, setEvents] = useState<AgendaEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -295,7 +298,18 @@ export default function EventsScreen() {
     if (next === "timeline") setSelectedKey(null);
   };
 
-  const scrollBottomPad = 28 + insets.bottom + 52;
+  const fontScaleEvents = PixelRatio.getFontScale();
+  const tabBarReserve =
+    52 +
+    (fontScaleEvents > 1
+      ? Math.min(14, Math.round((fontScaleEvents - 1) * 12))
+      : 0);
+  const scrollBottomPad = 28 + insets.bottom + tabBarReserve;
+
+  const modalBodyMaxHeight = Math.max(
+    280,
+    Math.round(windowHeight * 0.72 - 150),
+  );
 
   const selectedDayLabel = useMemo(() => {
     const first = selectedEvents[0];
@@ -390,13 +404,23 @@ export default function EventsScreen() {
                       idx === 0 || eventDayKey(ev) !== eventDayKey(prev!);
 
                     return (
-                      <View key={ev.id} style={styles.timelineItem}>
+                      <View
+                        key={ev.id}
+                        style={[
+                          styles.timelineItem,
+                          showDateHeader &&
+                            idx > 0 &&
+                            styles.timelineItemDayBreak,
+                        ]}
+                      >
                         {showDateHeader ? (
-                          <Text style={styles.timelineDateHeader}>
-                            {d
-                              ? formatDisplayDate(d)
-                              : `Date: ${ev.date || "TBA"}`}
-                          </Text>
+                          <View style={styles.timelineDateHeaderPill}>
+                            <Text style={styles.timelineDateHeader}>
+                              {d
+                                ? formatDisplayDate(d)
+                                : `Date: ${ev.date || "TBA"}`}
+                            </Text>
+                          </View>
                         ) : null}
                         <EventBlock
                           ev={ev}
@@ -502,7 +526,7 @@ export default function EventsScreen() {
               <Text style={styles.modalTitle}>{selectedDayLabel}</Text>
             </View>
             <ScrollView
-              style={styles.modalScroll}
+              style={[styles.modalScroll, { maxHeight: modalBodyMaxHeight }]}
               contentContainerStyle={styles.modalScrollContent}
             >
               {selectedEvents.map((ev, i) => {
@@ -547,8 +571,21 @@ function CalendarDayCell({
   selectedKey: string | null;
   setSelectedKey: React.Dispatch<React.SetStateAction<string | null>>;
 }) {
+  const dayCellMinHeight = Math.max(
+    72,
+    Math.round(64 * PixelRatio.getFontScale()),
+  );
+
   if (cell.type === "pad") {
-    return <View style={[styles.dayCell, styles.dayCellPad]} />;
+    return (
+      <View
+        style={[
+          styles.dayCell,
+          styles.dayCellPad,
+          { minHeight: dayCellMinHeight },
+        ]}
+      />
+    );
   }
 
   const k = dateKey(cell.date);
@@ -561,6 +598,7 @@ function CalendarDayCell({
     <TouchableOpacity
       style={[
         styles.dayCell,
+        { minHeight: dayCellMinHeight },
         hasEvents ? styles.dayCellHasEvents : styles.dayCellEmpty,
         isToday && styles.dayCellToday,
         isSelected && styles.dayCellSelected,
@@ -677,16 +715,31 @@ const styles = StyleSheet.create({
   },
   timelineItem: {
     paddingLeft: 36,
-    paddingBottom: 28,
+    paddingBottom: 26,
     position: "relative",
   },
+  timelineItemDayBreak: {
+    marginTop: 8,
+    paddingTop: 22,
+    borderTopWidth: StyleSheet.hairlineWidth * 2,
+    borderTopColor: "#CBD5E1",
+  },
+  timelineDateHeaderPill: {
+    alignSelf: "flex-start",
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginBottom: 14,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary,
+  },
   timelineDateHeader: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#1E40AF",
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#1E3A8A",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 10,
+    letterSpacing: 0.6,
   },
   eventBlockTimeline: {
     flexDirection: "column",
@@ -813,7 +866,6 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     flex: 1,
-    minHeight: 72,
     padding: 4,
     justifyContent: "flex-start",
     alignItems: "flex-start",
@@ -891,7 +943,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
-  modalScroll: { maxHeight: 480 },
+  modalScroll: {
+    flexShrink: 1,
+  },
   modalScrollContent: {
     paddingHorizontal: 16,
     paddingVertical: 16,
