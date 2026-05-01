@@ -24,6 +24,8 @@ const MAPPING = {
   // Tab bar (required on Android — iOS uses SF Symbols via icon-symbol.ios.tsx)
   "map.fill": "map",
   "list.bullet": "format-list-bulleted",
+  "figure.hiking": "hiking",
+  calendar: "event",
   "person.crop.circle": "account-circle",
 } as IconMapping;
 

@@ -40,6 +40,26 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="shared-events"
+        options={{
+          title: "Tours",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="figure.hiking" color={color} />
+          ),
+          tabBarLabel: "Tours",
+        }}
+      />
+      <Tabs.Screen
+        name="events"
+        options={{
+          title: "Events",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="calendar" color={color} />
+          ),
+          tabBarLabel: "Events",
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
