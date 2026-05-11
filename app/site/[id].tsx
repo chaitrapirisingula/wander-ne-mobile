@@ -44,6 +44,8 @@ interface Site {
   special50?: boolean;
 }
 
+const CHECK_IN_DISTANCE_MILES = 1;
+
 // Calculate distance between two coordinates in miles (Haversine formula)
 function calculateDistance(
   lat1: number,
@@ -280,12 +282,12 @@ export default function SiteDetailScreen() {
       const distance = calculateDistance(userLat, userLng, siteLat, siteLng);
       const distanceInMiles = distance;
 
-      if (distanceInMiles > 0.25) {
+      if (distanceInMiles > CHECK_IN_DISTANCE_MILES) {
         Alert.alert(
           "Too Far Away",
           `You are ${distanceInMiles.toFixed(
             2
-          )} miles away from this site. You must be within 1/4 mile to check in.`
+          )} miles away from this site. You must be within 1 mile to check in.`
         );
         setMarkingVisited(false);
         return;

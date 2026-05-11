@@ -52,7 +52,7 @@ export default ({ config }: { config: ExpoConfig }): ExpoConfig => {
     android: {
       ...config.android,
       package: "com.wandernebraska.mobile",
-      versionCode: 3,
+      versionCode: 4,
       adaptiveIcon: {
         ...config.android?.adaptiveIcon,
         foregroundImage: "./assets/images/icon.png",
