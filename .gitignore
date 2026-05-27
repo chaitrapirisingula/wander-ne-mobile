@@ -45,5 +45,18 @@ app-example
 .env
 .npm-cache
 
+# Firebase service account keys
+scripts/serviceAccountKey.json
+serviceAccountKey*.json
+*-firebase-adminsdk-*.json
+
+# Python
+scripts/.venv/
+__pycache__/
+*.pyc
+
+# Data exports (contain user PII)
+visited_sites*.csv
+
 /.idea
 /.vscode
