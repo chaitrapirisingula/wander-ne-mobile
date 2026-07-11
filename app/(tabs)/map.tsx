@@ -1,10 +1,14 @@
 import LoadingScreen from "@/components/LoadingScreen";
 import { Colors } from "@/constants/theme";
+import { getVisitedSites } from "@/lib/visitedSites";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useFocusEffect } from "@react-navigation/native";
 import Constants from "expo-constants";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import { onAuthStateChanged } from "firebase/auth";
 import { onValue, ref } from "firebase/database";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   StyleSheet,
@@ -13,7 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { db } from "../../firebase";
+import { auth, db } from "../../firebase";
 
 const MAPBOX_ACCESS_TOKEN = Constants.expoConfig?.extra?.mapboxToken || "";
 
@@ -182,22 +186,67 @@ export default function MapScreen() {
   const [geocoding, setGeocoding] = useState(false);
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [visitedIds, setVisitedIds] = useState<Set<string>>(new Set());
   const router = useRouter();
   const webViewRef = useRef<any>(null);
 
   const markerSignature = useMemo(() => {
-    // Used to force WebView reload when marker set changes.
-    return sitesWithCoords
-      .map((s) => {
-        const lat = Number(s.lat);
-        const lng = Number(s.lng);
-        return `${s.id}:${isNaN(lat) ? "x" : lat.toFixed(6)}:${
-          isNaN(lng) ? "x" : lng.toFixed(6)
-        }`;
-      })
-      .sort()
-      .join("|");
-  }, [sitesWithCoords]);
+    // Used to force WebView reload when marker set or visited status changes.
+    const visitedPart = Array.from(visitedIds).sort().join(",");
+    return (
+      sitesWithCoords
+        .map((s) => {
+          const lat = Number(s.lat);
+          const lng = Number(s.lng);
+          const visited = visitedIds.has(s.id) ? "v" : "u";
+          return `${s.id}:${isNaN(lat) ? "x" : lat.toFixed(6)}:${
+            isNaN(lng) ? "x" : lng.toFixed(6)
+          }:${visited}`;
+        })
+        .sort()
+        .join("|") + `|visited:${visitedPart}`
+    );
+  }, [sitesWithCoords, visitedIds]);
+
+  // Load visited sites for the signed-in user
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setVisitedIds(new Set());
+        return;
+      }
+      try {
+        const visited = await getVisitedSites(user.uid);
+        setVisitedIds(new Set(visited.map((v) => String(v.id))));
+      } catch (error) {
+        console.error("Error loading visited sites for map:", error);
+        setVisitedIds(new Set());
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Refresh visited markers when returning to the map (e.g. after check-in)
+  useFocusEffect(
+    useCallback(() => {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      let cancelled = false;
+      (async () => {
+        try {
+          const visited = await getVisitedSites(uid);
+          if (!cancelled) {
+            setVisitedIds(new Set(visited.map((v) => String(v.id))));
+          }
+        } catch (error) {
+          console.error("Error refreshing visited sites for map:", error);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
 
   useEffect(() => {
     // Fetch sites from Firebase
@@ -431,6 +480,7 @@ export default function MapScreen() {
         id: site.id,
         name: site.name || "Unknown Site",
         coordinates: [Number(site.lng), Number(site.lat)],
+        visited: visitedIds.has(site.id),
       }));
 
     return `
@@ -444,6 +494,15 @@ export default function MapScreen() {
     html, body { width: 100%; height: 100%; overflow: hidden; }
     #map { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
     .marker-selected { transform: scale(1.2); transition: transform 0.15s ease-in-out; }
+    .marker-check {
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 24px;
+      text-align: center;
+      width: 100%;
+      height: 100%;
+    }
   </style>
 </head>
 <body>
@@ -489,8 +548,18 @@ export default function MapScreen() {
                 if (!el || !el.style) return;
 
                 var isSelected = selectedMarkerId && String(id) === String(selectedMarkerId);
-                el.style.backgroundColor = isSelected ? '#007AFF' : '#FFD700';
-                el.style.border = isSelected ? '3px solid #003A8C' : '3px solid #007AFF';
+                var isVisited = el.getAttribute('data-visited') === '1';
+
+                if (isSelected) {
+                  el.style.backgroundColor = '#007AFF';
+                  el.style.border = '3px solid #003A8C';
+                } else if (isVisited) {
+                  el.style.backgroundColor = '#0047AB';
+                  el.style.border = '3px solid #FFFFFF';
+                } else {
+                  el.style.backgroundColor = '#FFD700';
+                  el.style.border = '3px solid #007AFF';
+                }
               });
             } catch (err) {
               // ignore
@@ -517,13 +586,27 @@ export default function MapScreen() {
                 
                 const el = document.createElement('div');
                 el.className = 'marker';
+                el.setAttribute('data-visited', site.visited ? '1' : '0');
                 el.style.width = '30px';
                 el.style.height = '30px';
                 el.style.borderRadius = '50%';
-                el.style.backgroundColor = '#FFD700';
-                el.style.border = '3px solid #007AFF';
                 el.style.cursor = 'pointer';
                 el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+                el.style.display = 'flex';
+                el.style.alignItems = 'center';
+                el.style.justifyContent = 'center';
+
+                if (site.visited) {
+                  el.style.backgroundColor = '#0047AB';
+                  el.style.border = '3px solid #FFFFFF';
+                  var check = document.createElement('div');
+                  check.className = 'marker-check';
+                  check.textContent = '✓';
+                  el.appendChild(check);
+                } else {
+                  el.style.backgroundColor = '#FFD700';
+                  el.style.border = '3px solid #007AFF';
+                }
 
                 const marker = new mapboxgl.Marker(el)
                   .setLngLat([lng, lat])
@@ -747,22 +830,32 @@ export default function MapScreen() {
               data={filteredSites}
               keyExtractor={(item) => item.id}
               keyboardShouldPersistTaps="handled"
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.searchResultRow}
-                  onPress={() => void focusSiteOnMap(item)}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.searchResultName} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  {!!(item.city || item.state) && (
-                    <Text style={styles.searchResultSub} numberOfLines={1}>
-                      {[item.city, item.state].filter(Boolean).join(", ")}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                const isVisited = visitedIds.has(item.id);
+                return (
+                  <TouchableOpacity
+                    style={styles.searchResultRow}
+                    onPress={() => void focusSiteOnMap(item)}
+                    activeOpacity={0.85}
+                  >
+                    <View style={styles.searchResultText}>
+                      <Text style={styles.searchResultName} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      {!!(item.city || item.state) && (
+                        <Text style={styles.searchResultSub} numberOfLines={1}>
+                          {[item.city, item.state].filter(Boolean).join(", ")}
+                        </Text>
+                      )}
+                    </View>
+                    {isVisited && (
+                      <View style={styles.visitedBadge}>
+                        <MaterialIcons name="check" size={14} color="#fff" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
               ItemSeparatorComponent={() => <View style={styles.searchDivider} />}
             />
           </View>
@@ -799,9 +892,16 @@ export default function MapScreen() {
                 </View>
               )}
               <View style={styles.siteCardText}>
-                <Text style={styles.siteCardName}>
-                  {selectedSite.name}
-                </Text>
+                <View style={styles.siteCardTitleRow}>
+                  <Text style={styles.siteCardName} numberOfLines={2}>
+                    {selectedSite.name}
+                  </Text>
+                  {visitedIds.has(selectedSite.id) && (
+                    <View style={styles.visitedBadge}>
+                      <MaterialIcons name="check" size={14} color="#fff" />
+                    </View>
+                  )}
+                </View>
                 {(selectedSite.city || selectedSite.state) && (
                   <Text style={styles.siteCardLocation}>
                     {[selectedSite.city, selectedSite.state]
@@ -865,6 +965,12 @@ const styles = StyleSheet.create({
   searchResultRow: {
     paddingHorizontal: 12,
     paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  searchResultText: {
+    flex: 1,
   },
   searchResultName: {
     fontSize: 15,
@@ -879,6 +985,14 @@ const styles = StyleSheet.create({
   searchDivider: {
     height: 1,
     backgroundColor: "rgba(0,0,0,0.06)",
+  },
+  visitedBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
   },
   loadingContainer: {
     flex: 1,
@@ -987,11 +1101,17 @@ const styles = StyleSheet.create({
   siteCardText: {
     flex: 1,
   },
+  siteCardTitleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginBottom: 4,
+  },
   siteCardName: {
+    flex: 1,
     fontSize: 16,
     fontWeight: "600",
     color: Colors.text,
-    marginBottom: 4,
   },
   siteCardLocation: {
     fontSize: 13,
