@@ -7,7 +7,8 @@ record itself).
 
 Output columns:
     site name, user first name, user last name, user email,
-    site city, site state, site zipCode
+    user mailing address, user mailing city, user mailing state,
+    user mailing zipCode, site city, site state, site zipCode
 
 Configuration:
     - FIREBASE_DATABASE_URL is loaded automatically from the project's .env
@@ -108,6 +109,10 @@ def export_to_csv(output_path: str) -> int:
                 "user first name",
                 "user last name",
                 "user email",
+                "user mailing address",
+                "user mailing city",
+                "user mailing state",
+                "user mailing zipCode",
                 "site city",
                 "site state",
                 "site zipCode",
@@ -122,6 +127,10 @@ def export_to_csv(output_path: str) -> int:
             user_profile = users.get(uid) or {}
             first_name, last_name = split_name(user_profile.get("name"))
             email = user_profile.get("email", "")
+            mailing_address = user_profile.get("mailingAddress", "")
+            mailing_city = user_profile.get("mailingCity", "")
+            mailing_state = user_profile.get("mailingState", "")
+            mailing_zip = user_profile.get("mailingZipCode", "")
 
             for site_id, visited in visited_sites.items():
                 if not isinstance(visited, dict):
@@ -140,6 +149,10 @@ def export_to_csv(output_path: str) -> int:
                         first_name,
                         last_name,
                         email,
+                        mailing_address,
+                        mailing_city,
+                        mailing_state,
+                        mailing_zip,
                         city,
                         state,
                         zip_code,
