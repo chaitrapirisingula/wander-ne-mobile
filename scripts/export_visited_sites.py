@@ -9,7 +9,7 @@ Output columns:
     site name, user first name, user last name, user email,
     user mailing address, user mailing city, user mailing state,
     user mailing zipCode, user t-shirt size, site city, site state,
-    site zipCode
+    site zipCode, visited at
 
 Configuration:
     - FIREBASE_DATABASE_URL is loaded automatically from the project's .env
@@ -118,6 +118,7 @@ def export_to_csv(output_path: str) -> int:
                 "site city",
                 "site state",
                 "site zipCode",
+                "visited at",
             ]
         )
 
@@ -145,6 +146,7 @@ def export_to_csv(output_path: str) -> int:
                 city = visited.get("city") or full_site.get("city", "")
                 state = visited.get("state") or full_site.get("state", "")
                 zip_code = full_site.get("zipCode", "")
+                visited_at = visited.get("visitedAt", "")
 
                 writer.writerow(
                     [
@@ -160,6 +162,7 @@ def export_to_csv(output_path: str) -> int:
                         city,
                         state,
                         zip_code,
+                        visited_at,
                     ]
                 )
                 rows_written += 1
